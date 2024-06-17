@@ -1,8 +1,5 @@
-# Toy MLIR
-https://mlir.llvm.org/docs/Tutorials/Toy/
-
-## Flow Diagram
-<img src="./images/toy.png" width="60%" alt="Toy MLIR Flow Diagram" />
+# Flow Diagram
+<img src="./images/toy.png" width="80%" alt="Toy MLIR Flow Diagram" />
 
 - `ToyDialect` is built on top of MLIR
 - Toy Compiler loads `ToyDialect` into MLIR
