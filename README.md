@@ -1,5 +1,5 @@
 # learnmlir
 For learning MLIR https://mlir.llvm.org/
 
-# Notes
-[Toy MLIR](./docs/toy.md)
+# Toy
+[Chapter 2](./toy/Ch2/README.md)
