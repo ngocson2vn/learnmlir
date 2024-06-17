@@ -6,12 +6,11 @@ building a compiler for a simple Toy language.
 See [docs/Tutorials/Toy](../../docs/Tutorials/Toy) at the root of
 the project for more informations.
 
-## Build
+## How to build
 ```Bash
-./build.sh TARGET_CHAPTER
-```
+# Generate dialect definitions
+./tablegen.sh
 
-For example:
-```Bash
-./build.sh Ch2
+# Build a target chapter
+./build.sh TARGET_CHAPTER
 ```
