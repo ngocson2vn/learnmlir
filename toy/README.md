@@ -11,6 +11,11 @@ See https://mlir.llvm.org/docs/Tutorials/Toy/
 ./build.sh Ch2
 ```
 
+### How to run
+```Bash
+./run2.sh
+```
+
 ### Flow Diagram
 <img src="./Ch2/images/toy.png" width="70%" alt="Toy MLIR Flow Diagram" />
 
