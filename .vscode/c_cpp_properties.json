@@ -3,26 +3,27 @@
         {
             "name": "Linux",
             "includePath": [
-                "/data00/home/son.nguyen/workspace/learnmlir/toy/Ch2/include",
-                "/data00/home/son.nguyen/workspace/learnmlir/llvm-project/llvm/include",
-                "/data00/home/son.nguyen/workspace/learnmlir/llvm-project/mlir/include",
-                "/data00/home/son.nguyen/workspace/learnmlir/llvm-project/build/include",
-                "/data00/home/son.nguyen/workspace/learnmlir/llvm-project/build/tools/mlir/include"
+                "${workspaceFolder}/toy/Ch2/include",
+                "${workspaceFolder}/llvm-project/llvm/include",
+                "${workspaceFolder}/llvm-project/mlir/include",
+                "${workspaceFolder}/llvm-project/build/include",
+                "${workspaceFolder}/llvm-project/build/tools/mlir/include"
             ],
             "defines": [
-                "GOOGLE_CUDA"
+                "GOOGLE_CUDA",
+                "GET_OP_CLASSES"
             ],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c11",
-            "cppStandard": "gnu++14",
+            "cppStandard": "c++17",
             "intelliSenseMode": "linux-gcc-x64",
             "browse": {
                 "path": [
-                    "/data00/home/son.nguyen/workspace/learnmlir/toy/Ch2/include",
-                    "/data00/home/son.nguyen/workspace/learnmlir/llvm-project/llvm/include",
-                    "/data00/home/son.nguyen/workspace/learnmlir/llvm-project/mlir/include",
-                    "/data00/home/son.nguyen/workspace/learnmlir/llvm-project/build/include",
-                    "/data00/home/son.nguyen/workspace/learnmlir/llvm-project/build/tools/mlir/include"
+                    "${workspaceFolder}/toy/Ch2/include",
+                    "${workspaceFolder}/llvm-project/llvm/include",
+                    "${workspaceFolder}/llvm-project/mlir/include",
+                    "${workspaceFolder}/llvm-project/build/include",
+                    "${workspaceFolder}/llvm-project/build/tools/mlir/include"
                 ],
                 "databaseFilename": "${workspaceFolder}/.vscode/vc.db",
                 "limitSymbolsToIncludedHeaders": false

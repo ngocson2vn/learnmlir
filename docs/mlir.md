@@ -9,3 +9,6 @@ edges == Values
 
 ## Notation
 This document describes the grammar using Extended Backus-Naur Form (EBNF).
+
+# Notes
+Any Language -> Dialect + MLIR -> MLIR IR -> Analyze -> Transform/Optimize -> MLIR IR

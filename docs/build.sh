@@ -14,10 +14,16 @@
 #############################################################################
 # Build
 #############################################################################
-# mkdir llvm-project/build
-# cp -vf docs/build.sh llvm-project/build
-# cd llvm-project/build
-# ./build.sh
+mkdir llvm-project
+cd llvm-project
+git init
+git remote add origin git@github.com:llvm/llvm-project.git
+git fetch origin --depth 1 fdac4c4e92e5a83ac5e4fa6d1d2970c0c4df8fa8
+git checkout FETCH_HEAD
+mkdir build
+cp -vf docs/build.sh llvm-project/build
+cd build
+./build.sh
 #############################################################################
 
 set -e

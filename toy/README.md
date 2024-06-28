@@ -18,3 +18,5 @@ See https://mlir.llvm.org/docs/Tutorials/Toy/
 - Toy Compiler loads `ToyDialect` into MLIR
 - Toy Compiler calls `Lexer` and `Parser` to produce Toy AST
 - Toy Compiler calls `MLIRGenImpl` methods to generate Toy IR in MLIR format
+
+### How does MLIR load `ToyDialect`?
