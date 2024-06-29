@@ -1,0 +1,9 @@
+def transpose_transpose(x) {
+  return transpose(transpose(x));
+}
+
+def main() {
+  var x<2, 3> = [1, 2, 3, 4, 5, 6];
+  var x2 = transpose_transpose(x);
+  print(x2);
+}
