@@ -2,4 +2,4 @@
 
 set -e
 
-CC=clang bazel build -s --verbose_failures --sandbox_debug :main
+CC=clang bazel build -s --compilation_mode=dbg --strip=never --verbose_failures --sandbox_debug :main
