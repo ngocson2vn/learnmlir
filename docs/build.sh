@@ -9,11 +9,14 @@
 # cd /usr/bin
 # ln -s /usr/lib/llvm-11/bin/clang /usr/bin/clang
 # ln -s /usr/lib/llvm-11/bin/clang++ /usr/bin/clang++
+# ln -s /usr/lib/llvm-11/bin/lld /usr/bin/lld
 
 
 #############################################################################
 # Build
 #############################################################################
+<<SCRIPT
+
 mkdir llvm-project
 cd llvm-project
 git init
@@ -22,8 +25,10 @@ git fetch origin --depth 1 fdac4c4e92e5a83ac5e4fa6d1d2970c0c4df8fa8
 git checkout FETCH_HEAD
 mkdir build
 cp -vf docs/build.sh llvm-project/build
-cd build
+cd llvm-project/build
 ./build.sh
+
+SCRIPT
 #############################################################################
 
 set -e
