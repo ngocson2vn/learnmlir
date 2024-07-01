@@ -80,7 +80,9 @@ struct PrintNestingPass
     IdentRAII(int &indent) : indent(indent) {}
     ~IdentRAII() { --indent; }
   };
+
   void resetIndent() { indent = 0; }
+
   IdentRAII pushIndent() { return IdentRAII(++indent); }
 
   llvm::raw_ostream &printIndent() {

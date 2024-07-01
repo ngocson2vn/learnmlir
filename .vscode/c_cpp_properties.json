@@ -4,7 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/toy/Ch2/include",
-                "${workspaceFolder}/toy/pass1/include",
+                "${workspaceFolder}/toy/bazel-toy/pass1/include",
                 "${workspaceFolder}/llvm-project/llvm/include",
                 "${workspaceFolder}/llvm-project/mlir/include",
                 "${workspaceFolder}/llvm-project/build/include",
@@ -21,7 +21,7 @@
             "browse": {
                 "path": [
                     "${workspaceFolder}/toy/Ch2/include",
-                    "${workspaceFolder}/toy/pass1/include",
+                    "${workspaceFolder}/toy/bazel-toy/pass1/include",
                     "${workspaceFolder}/llvm-project/llvm/include",
                     "${workspaceFolder}/llvm-project/mlir/include",
                     "${workspaceFolder}/llvm-project/build/include",
