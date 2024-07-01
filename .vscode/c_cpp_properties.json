@@ -5,6 +5,11 @@
             "includePath": [
                 "${workspaceFolder}/toy/Ch2/include",
                 "${workspaceFolder}/toy/bazel-toy/pass1/include",
+                "${workspaceFolder}/toy/bazel-toy/external/org_tensorflow",
+                "${workspaceFolder}/toy/bazel-toy/external/com_google_absl",
+                "${workspaceFolder}/toy/bazel-toy/external/eigen_archive",
+                "${workspaceFolder}/toy/bazel-toy/external/com_google_protobuf/src",
+                "${workspaceFolder}/toy/bazel-toy/bazel-out/k8-dbg/bin/external/org_tensorflow",
                 "${workspaceFolder}/llvm-project/llvm/include",
                 "${workspaceFolder}/llvm-project/mlir/include",
                 "${workspaceFolder}/llvm-project/build/include",
@@ -19,14 +24,6 @@
             "cppStandard": "c++17",
             "intelliSenseMode": "linux-gcc-x64",
             "browse": {
-                "path": [
-                    "${workspaceFolder}/toy/Ch2/include",
-                    "${workspaceFolder}/toy/bazel-toy/pass1/include",
-                    "${workspaceFolder}/llvm-project/llvm/include",
-                    "${workspaceFolder}/llvm-project/mlir/include",
-                    "${workspaceFolder}/llvm-project/build/include",
-                    "${workspaceFolder}/llvm-project/build/tools/mlir/include"
-                ],
                 "databaseFilename": "${workspaceFolder}/.vscode/vc.db",
                 "limitSymbolsToIncludedHeaders": false
             }

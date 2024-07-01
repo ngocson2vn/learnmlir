@@ -20,3 +20,21 @@ def repo(name):
         ],
         link_files = {"//third_party/llvm:run_lit.sh": "mlir/run_lit.sh"},
     )
+
+def tf_repo(name):
+    """Imports TF."""
+    TF_COMMIT = "12b64405765dd183ef72ba3e3fd06e7bad14e034"
+    TF_SHA256 = "0b2c1a71eb2aa81cc696f016d48c21c7ed31917c198ce92f1c580f9c6a3f5c3b"
+
+    tf_http_archive(
+        name = name,
+        sha256 = TF_SHA256,
+        strip_prefix = "tensorflow-{commit}".format(commit = TF_COMMIT),
+        urls = [
+            "https://storage.googleapis.com/mirror.tensorflow.org/github.com/tensorflow/tensorflow/archive/{commit}.tar.gz".format(commit = TF_COMMIT),
+            "https://github.com/tensorflow/tensorflow/archive/{commit}.tar.gz".format(commit = TF_COMMIT),
+        ],
+        build_file = "//third_party/tensorflow:tensorflow.BUILD",
+        patch_file = [],
+        link_files = {},
+    )

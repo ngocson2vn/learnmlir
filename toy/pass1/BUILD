@@ -46,5 +46,6 @@ cc_binary(
       "@llvm-project//mlir:SideEffectInterfaces",
       "@llvm-project//mlir:Transforms",
       "@llvm-project//mlir:MlirOptLib",
+      "@org_tensorflow//tensorflow/compiler/mlir/tensorflow:tensorflow",
     ]
 )
