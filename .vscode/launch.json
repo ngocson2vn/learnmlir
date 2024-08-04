@@ -62,6 +62,44 @@
                   "text": "directory ${workspaceFolder}"
               }
           ]
-      }
+      },
+      {
+        "name": "(gdb) test",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/test/test",
+        "cwd": "${workspaceFolder}",
+        "args": [],
+        "stopAtEntry": true,
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "miDebuggerArgs": "-x '${workspaceFolder}/gdb.conf'",
+        "linux": {
+          "sourceFileMap": {
+              "/proc/self/cwd": {
+                  "editorPath": "${workspaceFolder}/test",
+                  "useForBreakpoints": true
+              }
+            }
+        },
+        "setupCommands": [
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Set Disassembly Flavor to Intel",
+                "text": "-gdb-set disassembly-flavor intel",
+                "ignoreFailures": true
+            },
+            {
+                "description": "",
+                //Configure the search path of the code file here, such as the path where the workspace can be configured in the blade project
+                "text": "directory ${workspaceFolder}"
+            }
+        ]
+    }
   ]
 }
