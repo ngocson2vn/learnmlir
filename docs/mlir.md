@@ -134,4 +134,13 @@ main(int argc, char ** argv) (/data00/home/son.nguyen/workspace/auto_fusion_dev/
 
 # Operation Pass
 https://mlir.llvm.org/docs/PassManagement/#operation-pass  
-All passes in MLIR derive from `OperationPass`. 
+MLIR also supports general OperationPasses that run on any isolated operation. All passes in MLIR derive from `OperationPass`.  
+Implementing a pass is done by creating a class inheriting from `mlir::OperationPass<FuncOp>` and overriding the `runOnOperation()` method.  
+For example, https://mlir.llvm.org/docs/Tutorials/UnderstandingTheIRStructure/  
+```C++
+  void runOnOperation() override {
+    Operation *op = getOperation();
+    resetIndent();
+    printOperation(op);
+  }
+```
