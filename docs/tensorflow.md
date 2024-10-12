@@ -122,3 +122,17 @@ HLO is an intermediate representation specifically used by the XLA (Accelerated 
 - The combined use of MLIR and HLO within the TensorFlow ecosystem allows for efficient compilation and execution of machine learning models across various hardware platforms.
 
 By integrating MLIR and HLO, TensorFlow leverages a multi-level optimization strategy, enhancing the performance and adaptability of machine learning workloads.
+
+# Kernel Generation
+```C++
+// main.cpp
+constexpr llvm::StringRef kGpuBinaryAttrName = "gpu.binary";
+mlir::PassManager pm(module.getContext());
+pm.addPass(mlir::kernel_gen::transforms::CreateTFKernelToLLVMPass(kGpuBinaryAttrName));
+
+// tensorflow/compiler/mlir/tools/kernel_gen/transforms/tf_kernel_to_llvm_pass.cc
+std::unique_ptr<OperationPass<ModuleOp> > CreateTFKernelToLLVMPass(
+    StringRef blob_annotation) {
+  return std::make_unique<TFKernelToLLVMPass>(blob_annotation);
+}
+```

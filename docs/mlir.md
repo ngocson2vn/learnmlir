@@ -144,3 +144,26 @@ For example, https://mlir.llvm.org/docs/Tutorials/UnderstandingTheIRStructure/
     printOperation(op);
   }
 ```
+
+# Output file
+```C++
+#include "mlir/Support/FileUtilities.h"
+#include "llvm/Support/FileUtilities.h"
+#include "llvm/Support/ToolOutputFile.h"
+
+std::string errorMessage;
+auto output = openOutputFile("/data00/son.nguyen/log/ops.log", &errorMessage);
+if (!output) {
+  llvm::errs() << errorMessage << "\n";
+  return std::terminate();
+}
+
+raw_ostream& os = output->os();
+os << op->getName();
+output->keep();
+```
+
+# Block
+```C++
+llvm-project/mlir/include/mlir/IR/Block.h
+```
