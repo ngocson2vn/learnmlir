@@ -26,4 +26,8 @@ if [ ! -e ./.tblgen.done ]; then
 fi
 
 # CC=clang bazel build //Ch2:test
-CC=clang++ bazel build -s :toyc --verbose_failures --sandbox_debug
+
+COPTS="-O0,-g,-fno-inline,-UNDEBUG"
+SRC_FILES=+toyc.cpp
+SRC_FILES=${SRC_FILES},+llvm/lib/Support/CommandLine.cpp
+CC=clang++ bazel build -s :toyc --per_file_copt=${SRC_FILES}@${COPTS} --strip=never --verbose_failures --sandbox_debug --experimental_repo_remote_exec

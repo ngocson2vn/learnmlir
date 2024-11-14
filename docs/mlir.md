@@ -152,13 +152,13 @@ For example, https://mlir.llvm.org/docs/Tutorials/UnderstandingTheIRStructure/
 #include "llvm/Support/ToolOutputFile.h"
 
 std::string errorMessage;
-auto output = openOutputFile("/data00/son.nguyen/log/ops.log", &errorMessage);
+auto output = mlir::openOutputFile("/data00/son.nguyen/log/ops.log", &errorMessage);
 if (!output) {
   llvm::errs() << errorMessage << "\n";
   return std::terminate();
 }
 
-raw_ostream& os = output->os();
+llvm::raw_ostream& os = output->os();
 os << op->getName();
 output->keep();
 ```
@@ -166,4 +166,64 @@ output->keep();
 # Block
 ```C++
 llvm-project/mlir/include/mlir/IR/Block.h
+```
+
+# Debug
+--mlir-print-debuginfo
+```C++
+// main.cc
+#include "llvm/Support/Debug.h"
+
+LLVM_DEBUG(llvm::dbgs() << "Start initializing " << getDialectNamespace() << "\n");
+```
+
+build.sh:
+```Bash
+COPTS="-O0,-g,-fno-inline,-UNDEBUG"
+SRC_FILES=+toyc.cc
+SRC_FILES=${SRC_FILES},+llvm/lib/Support/Debug.cpp
+SRC_FILES=${SRC_FILES},+llvm/lib/Support/CommandLine.cpp
+
+CC=/usr/bin/gcc ./bazel --output_user_root=./build build -s //:toyc --config=cuda --per_file_copt=${SRC_FILES}@${COPTS} --strip=never $FLAGS -j 128
+```
+
+# Dump IR
+```C++
+  mlir::OpPrintingFlags flag{};
+
+  std::string errorMessage;
+  auto output = mlir::openOutputFile("dump_ir_all.mlir", &errorMessage);
+  if (!output) {
+    llvm::errs() << errorMessage << "\n";
+    std::terminate();
+  }
+  llvm::raw_ostream& os = output->os();
+
+  pm.enableIRPrinting(
+    /*shouldPrintBeforePass=*/[](mlir::Pass* p, mlir::Operation* op) {
+      if (op->getName().getStringRef() == "func.func") {
+        auto funcOp = llvm::dyn_cast<FuncOp>(op);
+        // llvm::outs() << funcOp.getSymName() << "\n";
+        if (funcOp.getSymName() == "predict_online_13" || funcOp.getSymName() == "predict_online_14") {
+          return true;
+        }
+      }
+
+      return false;
+    },
+    /*shouldPrintAfterPass=*/[](mlir::Pass* p, mlir::Operation * op) {
+      if (op->getName().getStringRef() == "func.func") {
+        auto funcOp = llvm::dyn_cast<FuncOp>(op);
+        if (funcOp.getSymName() == "predict_online_13" || funcOp.getSymName() == "predict_online_14") {
+          return true;
+        }
+      }
+
+      return false;
+    },
+    /*printModuleScope=*/false, 
+    /*printAfterOnlyOnChange=*/false,
+    /*printAfterOnlyOnFailure=*/false, 
+    os, flag
+  );
 ```
