@@ -189,22 +189,21 @@ CC=/usr/bin/gcc ./bazel --output_user_root=./build build -s //:toyc --config=cud
 
 # Dump IR
 ```C++
-  mlir::OpPrintingFlags flag{};
-
   std::string errorMessage;
-  auto output = mlir::openOutputFile("dump_ir_all.mlir", &errorMessage);
-  if (!output) {
+
+  // predict_online_13
+  auto predict_online_13 = mlir::openOutputFile("predict_online_13.mlir", &errorMessage);
+  if (!predict_online_13) {
     llvm::errs() << errorMessage << "\n";
     std::terminate();
   }
-  llvm::raw_ostream& os = output->os();
 
+  mlir::OpPrintingFlags flag{};
   pm.enableIRPrinting(
     /*shouldPrintBeforePass=*/[](mlir::Pass* p, mlir::Operation* op) {
       if (op->getName().getStringRef() == "func.func") {
         auto funcOp = llvm::dyn_cast<FuncOp>(op);
-        // llvm::outs() << funcOp.getSymName() << "\n";
-        if (funcOp.getSymName() == "predict_online_13" || funcOp.getSymName() == "predict_online_14") {
+        if (funcOp.getSymName() == "predict_online_13") {
           return true;
         }
       }
@@ -214,7 +213,7 @@ CC=/usr/bin/gcc ./bazel --output_user_root=./build build -s //:toyc --config=cud
     /*shouldPrintAfterPass=*/[](mlir::Pass* p, mlir::Operation * op) {
       if (op->getName().getStringRef() == "func.func") {
         auto funcOp = llvm::dyn_cast<FuncOp>(op);
-        if (funcOp.getSymName() == "predict_online_13" || funcOp.getSymName() == "predict_online_14") {
+        if (funcOp.getSymName() == "predict_online_13") {
           return true;
         }
       }
@@ -224,6 +223,40 @@ CC=/usr/bin/gcc ./bazel --output_user_root=./build build -s //:toyc --config=cud
     /*printModuleScope=*/false, 
     /*printAfterOnlyOnChange=*/false,
     /*printAfterOnlyOnFailure=*/false, 
-    os, flag
+    predict_online_13->os(), flag
+  );
+
+  // predict_online_13
+  auto predict_online_14 = mlir::openOutputFile("predict_online_14.mlir", &errorMessage);
+  if (!predict_online_14) {
+    llvm::errs() << errorMessage << "\n";
+    std::terminate();
+  }
+
+  pm.enableIRPrinting(
+    /*shouldPrintBeforePass=*/[](mlir::Pass* p, mlir::Operation* op) {
+      if (op->getName().getStringRef() == "func.func") {
+        auto funcOp = llvm::dyn_cast<FuncOp>(op);
+        if (funcOp.getSymName() == "predict_online_14") {
+          return true;
+        }
+      }
+
+      return false;
+    },
+    /*shouldPrintAfterPass=*/[](mlir::Pass* p, mlir::Operation * op) {
+      if (op->getName().getStringRef() == "func.func") {
+        auto funcOp = llvm::dyn_cast<FuncOp>(op);
+        if (funcOp.getSymName() == "predict_online_14") {
+          return true;
+        }
+      }
+
+      return false;
+    },
+    /*printModuleScope=*/false, 
+    /*printAfterOnlyOnChange=*/false,
+    /*printAfterOnlyOnFailure=*/false, 
+    predict_online_14->os(), flag
   );
 ```
