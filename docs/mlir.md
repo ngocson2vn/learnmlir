@@ -187,7 +187,23 @@ SRC_FILES=${SRC_FILES},+llvm/lib/Support/CommandLine.cpp
 CC=/usr/bin/gcc ./bazel --output_user_root=./build build -s //:toyc --config=cuda --per_file_copt=${SRC_FILES}@${COPTS} --strip=never $FLAGS -j 128
 ```
 
-# Dump IR
+# Dump Ops
+```C++
+  std::error_code errCode;
+  llvm::raw_fd_ostream outputFile(output_fp, errCode);
+  if (errCode.value()) {
+    std::abort();
+  }
+
+  for (auto op : cluster) {
+    outputFile << *op << "\n";
+  }
+
+  outputFile.close();
+```
+
+# Pass Manager
+## Dump IRs
 ```C++
   std::string errorMessage;
 
