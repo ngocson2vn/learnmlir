@@ -202,9 +202,40 @@ CC=/usr/bin/gcc ./bazel --output_user_root=./build build -s //:toyc --config=cud
   outputFile.close();
 ```
 
+# Dump FuncOp V1
+```C++
+
+```
+
+# Dump FuncOp V2
+```C++
+#include "mlir/Support/FileUtilities.h"
+#include "llvm/Support/FileUtilities.h"
+#include "llvm/Support/ToolOutputFile.h"
+
+std::string errorMessage;
+auto output = mlir::openOutputFile("layer_norm.mlir", &errorMessage);
+if (!output) {
+  llvm::errs() << errorMessage << "\n";
+  std::terminate();
+}
+llvm::raw_ostream& os = output->os();
+
+auto returnOp = cast<func::ReturnOp>(func.getBody().front().getTerminator());
+
+if (returnOp.getOperands().size() != 1) {
+  os << *func << "\n\n";
+  os << *returnOp << "\n";
+  output->keep();
+}
+```
+
 # Pass Manager
 ## Dump IRs
 ```C++
+#include "llvm/Support/ToolOutputFile.h"
+#include "mlir/Support/FileUtilities.h"  // from @llvm-project
+
   std::string errorMessage;
 
   // predict_online_13
@@ -275,4 +306,9 @@ CC=/usr/bin/gcc ./bazel --output_user_root=./build build -s //:toyc --config=cud
     /*printAfterOnlyOnFailure=*/false, 
     predict_online_14->os(), flag
   );
+
+  ...
+
+  predict_online_13->keep();
+  predict_online_14->keep();
 ```
