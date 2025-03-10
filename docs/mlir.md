@@ -187,6 +187,36 @@ SRC_FILES=${SRC_FILES},+llvm/lib/Support/CommandLine.cpp
 CC=/usr/bin/gcc ./bazel --output_user_root=./build build -s //:toyc --config=cuda --per_file_copt=${SRC_FILES}@${COPTS} --strip=never $FLAGS -j 128
 ```
 
+# Dump Clusters
+```C++
+// lib/Transforms/cluster_algo.h
+const std::vector<Operation *>& getCluster() const;
+
+// lib/Transforms/cluster_algo.cc
+const std::vector<Operation *>& getCluster() const {
+  return cluster;
+}
+
+// lib/Transforms/fuse_cwise_ops.cc
+{
+  std::error_code errCode;
+  llvm::raw_fd_ostream outputFile("before_merge_clusters.mlir", errCode);
+  if (errCode.value()) {
+    return std::terminate();
+  }
+
+  for (auto& c : clusters.getClusters()) {
+    for (auto& op : c.getCluster()) {
+      outputFile << *op << "\n";
+    }
+    outputFile << "\n\n";
+    outputFile.flush();
+  }
+  outputFile.close();
+  llvm::outs() << "Outputted before_merge_clusters.mlir\n\n";
+}
+```
+
 # Dump Ops
 ```C++
   std::error_code errCode;
@@ -229,6 +259,41 @@ if (returnOp.getOperands().size() != 1) {
   output->keep();
 }
 ```
+
+# Dump FuncOp V3
+```C++
+#include "mlir/Support/FileUtilities.h"
+#include "llvm/Support/FileUtilities.h"
+#include "llvm/Support/ToolOutputFile.h"
+struct LayerNormConvert : public OpRewritePattern<func::FuncOp>,
+                          ConvertBase<LayerNormConvert> {
+  using OpRewritePattern::OpRewritePattern;
+ public:
+  static std::unique_ptr<llvm::ToolOutputFile>& getOutputStream() {
+    std::string errorMessage;
+    std::string output_filename = "layer_norm.mlir";
+    static std::unique_ptr<llvm::ToolOutputFile> output = mlir::openOutputFile(output_filename, &errorMessage);
+    if (!output) {
+      llvm::errs() << errorMessage << "\n";
+      std::terminate();
+    }
+    return output;
+  }
+
+  // Client code
+  auto& output = LayerNormConvert::getOutputStream();
+  llvm::raw_ostream& os = output->os();
+  if (cluster.size() > 0) {
+    os << "# ========================================================================================\n";
+    for (auto op : cluster) {
+      os << *op << "\n";
+    }
+    os << "\n";
+    output->keep();
+  }
+
+```
+
 
 # Pass Manager
 ## Dump IRs
@@ -273,7 +338,7 @@ if (returnOp.getOperands().size() != 1) {
     predict_online_13->os(), flag
   );
 
-  // predict_online_13
+  // predict_online_14
   auto predict_online_14 = mlir::openOutputFile("predict_online_14.mlir", &errorMessage);
   if (!predict_online_14) {
     llvm::errs() << errorMessage << "\n";
@@ -311,4 +376,16 @@ if (returnOp.getOperands().size() != 1) {
 
   predict_online_13->keep();
   predict_online_14->keep();
+```
+
+# Get pass name
+```C++
+// llvm-project/mlir/lib/Pass/Pass.cpp
+LogicalResult OpToOpPassAdaptor::run(Pass *pass, Operation *op,
+                                     AnalysisManager am, bool verifyPasses,
+                                     unsigned parentInitGeneration) {
+  // Omit
+}
+
+-exec p pass->getName()
 ```
