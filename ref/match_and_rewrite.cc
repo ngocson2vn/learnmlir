@@ -219,3 +219,23 @@ public:
 // indicesType = gatherOp.Tindices();
 // axis = gatherOp.axis();
 // axisSet.insert(gatherOp.axis().getDefiningOp());
+
+SmallVector<std::vector<Operation *>> Cluster::split() {
+  const int kClusterSizeThreshold = auto_fusion::AFClusterSizeThreshold();
+  SmallVector<std::vector<Operation *>, 2> splitClusters;
+  if (cluster.size() <= kClusterSizeThreshold) {
+    splitClusters.push_back(cluster);
+  } else {
+    int parts = cluster.size() / kClusterSizeThreshold;
+    parts += (cluster.size() % kClusterSizeThreshold == 0) ? 0 : 1;
+    for (int i = 0; i < parts - 1; i++) {
+      std::vector<Operation *> partCluster(cluster.begin() + (i * kClusterSizeThreshold), cluster.begin() + (i + 1) * kClusterSizeThreshold);
+      splitClusters.push_back(std::move(partCluster));
+    }
+
+    std::vector<Operation *> partCluster(cluster.begin() + (parts - 1) * kClusterSizeThreshold, cluster.end());
+    splitClusters.push_back(std::move(partCluster));
+  }
+
+  return splitClusters;
+}
