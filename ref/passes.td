@@ -3,17 +3,15 @@
 
 include "mlir/Pass/PassBase.td"
 
-def BatchComputeFusion: Pass<"af-batch-compute", "ModuleOp"> {
-  let summary = "af-batch-compute";
-  let constructor = "mlir::tfext_kernel_gen::createBatchComputeFusionPass()";
+def SonyDebugPass: Pass<"af-sony-debug", "gpu::GPUModuleOp"> {
+  let summary = "af-sony-debug";
+  let constructor = "mlir::tfext_kernel_gen::createSonyDebugPass()";
   let dependentDialects = [
-    "mlir::TF::TensorFlowDialect",
-    "mlir::tf_executor::TensorFlowExecutorDialect",
-    "AffineDialect",
-    "gpu::GPUDialect",
-    "mlir::memref::MemRefDialect",
     "mlir::arith::ArithDialect",
     "mlir::scf::SCFDialect",
+    "mlir::memref::MemRefDialect",
+    "gpu::GPUDialect",
+    "mlir::LLVM::LLVMDialect",
   ];
 }
 

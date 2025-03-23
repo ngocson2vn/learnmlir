@@ -202,7 +202,7 @@ const std::vector<Operation *>& getCluster() const {
   std::error_code errCode;
   llvm::raw_fd_ostream outputFile("before_merge_clusters.mlir", errCode);
   if (errCode.value()) {
-    return std::terminate();
+    std::terminate();
   }
 
   for (auto& c : clusters.getClusters()) {
@@ -388,4 +388,11 @@ LogicalResult OpToOpPassAdaptor::run(Pass *pass, Operation *op,
 }
 
 -exec p pass->getName()
+```
+
+## Disable multithreading
+```C++
+  auto ctx = module.getContext();
+  ctx->enableMultithreading(false);
+  mlir::PassManager pm(ctx);
 ```
