@@ -396,3 +396,16 @@ LogicalResult OpToOpPassAdaptor::run(Pass *pass, Operation *op,
   ctx->enableMultithreading(false);
   mlir::PassManager pm(ctx);
 ```
+
+# Common Errors
+## error: operand #0 does not dominate this use
+Solution:  
+Modify llvm-project/mlir/lib/IR/Verifier.cpp to print out the faulty op:
+```C++
+/// Emit an error when the specified operand of the specified operation is an
+/// invalid use because of dominance properties.
+static void diagnoseInvalidOperandDominance(Operation &op, unsigned operandNo) {
+  InFlightDiagnostic diag = op.emitError("operand #")
+                            << operandNo << " does not dominate this use: "
+                            << op;
+```

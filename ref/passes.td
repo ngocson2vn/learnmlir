@@ -15,4 +15,14 @@ def SonyDebugPass: Pass<"af-sony-debug", "gpu::GPUModuleOp"> {
   ];
 }
 
+def AFBatchComputeFusionPass: Pass<"af-batch-compute-fusion", "func::FuncOp"> {
+  let summary = "af-batch-compute-fusion";
+  let constructor = "mlir::tfext_kernel_gen::createAFBatchComputeFusionPass()";
+  let dependentDialects = [
+    "mlir::scf::SCFDialect",
+    "mlir::arith::ArithDialect",
+    "mlir::memref::MemRefDialect",
+  ];
+}
+
 #endif // TFEXT_KERNEL_GEN_PASSES

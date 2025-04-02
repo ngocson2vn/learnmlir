@@ -1,0 +1,2 @@
+      // AffineMap map = AffineMap::get(1, 1, {builder.getAffineDimExpr(0) - builder.getAffineSymbolExpr(0));
+      // Value blockSub = rewriter.create<AffineApplyOp>(loc, map, ValueRange{dims[0], numBlocks});

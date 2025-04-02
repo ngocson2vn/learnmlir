@@ -107,6 +107,13 @@
     "__threading_support": "cpp",
     "__tuple": "cpp",
     "locale": "cpp",
-    "propagate_const": "cpp"
+    "propagate_const": "cpp",
+    "__std_stream": "cpp",
+    "__verbose_abort": "cpp",
+    "barrier": "cpp",
+    "coroutine": "cpp",
+    "latch": "cpp",
+    "numbers": "cpp",
+    "semaphore": "cpp"
   }
 }
