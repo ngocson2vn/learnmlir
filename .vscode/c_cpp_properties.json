@@ -10,6 +10,7 @@
                 "${workspaceFolder}/toy/bazel-toy/external/eigen_archive",
                 "${workspaceFolder}/toy/bazel-toy/external/com_google_protobuf/src",
                 "${workspaceFolder}/toy/bazel-toy/bazel-out/k8-dbg/bin/external/org_tensorflow",
+                "${workspaceFolder}/examples/bazel-examples/external/org_tensorflow",
                 "${workspaceFolder}/llvm-project/llvm/include",
                 "${workspaceFolder}/llvm-project/mlir/include",
                 "${workspaceFolder}/llvm-project/build/include",

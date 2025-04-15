@@ -1,0 +1,13 @@
+    // Make numThreads = 2^n
+    numThreads = rewriter.create<arith::SubIOp>(loc, numThreads, c1);
+    Value mask = rewriter.create<arith::ShRUIOp>(loc, numThreads, c1);   // >> 1
+    numThreads = rewriter.create<arith::OrIOp>(loc, numThreads, mask);
+    mask = rewriter.create<arith::ShRUIOp>(loc, numThreads, c2);         // >> 2
+    numThreads = rewriter.create<arith::OrIOp>(loc, numThreads, mask);
+    mask = rewriter.create<arith::ShRUIOp>(loc, numThreads, c4);         // >> 4
+    numThreads = rewriter.create<arith::OrIOp>(loc, numThreads, mask);
+    mask = rewriter.create<arith::ShRUIOp>(loc, numThreads, c8);         // >> 8
+    numThreads = rewriter.create<arith::OrIOp>(loc, numThreads, mask);
+    mask = rewriter.create<arith::ShRUIOp>(loc, numThreads, c16);        // >> 16
+    numThreads = rewriter.create<arith::OrIOp>(loc, numThreads, mask);
+    numThreads = rewriter.create<arith::AddIOp>(loc, numThreads, c1);
