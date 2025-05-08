@@ -1,8 +1,6 @@
 module {
-  func.func @main() {
-    %1 = "arith.constant"() {value = dense<[1.0, 2.0]> : tensor<2xf64>} : () -> tensor<2xf64>
-    %2 = "arith.constant"() {value = dense<[3.0, 4.0]> : tensor<2xf64>} : () -> tensor<2xf64>
-    %3 = "toy.add"(%1, %2) : (tensor<2xf64>, tensor<2xf64>) -> tensor<2xf64>
-    return
+  func.func @main(%arg0: tensor<?xf64>, %arg1: tensor<?xf64>) -> tensor<?xf64> {
+    %0 = "toy.add"(%arg0, %arg1) : (tensor<?xf64>, tensor<?xf64>) -> tensor<?xf64>
+    return %0 : tensor<?xf64>
   }
 }

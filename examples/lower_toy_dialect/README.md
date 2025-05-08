@@ -31,6 +31,17 @@ find | grep -E '.*\.a$' | sort -V
 <br/>
 
 ## How to run
+input.mlir:
+```mlir
+module {
+  func.func @main(%arg0: tensor<?xf64>, %arg1: tensor<?xf64>) -> tensor<?xf64> {
+    %0 = "toy.add"(%arg0, %arg1) : (tensor<?xf64>, tensor<?xf64>) -> tensor<?xf64>
+    return %0 : tensor<?xf64>
+  }
+}
+```
+<br/>
+
 ```Bash
 ./run.sh
 ```
@@ -39,11 +50,9 @@ find | grep -E '.*\.a$' | sort -V
 Lowered MLIR:
 ```mlir
 module {
-  func.func @main() {
-    %cst = arith.constant dense<[1.000000e+00, 2.000000e+00]> : tensor<2xf64>
-    %cst_0 = arith.constant dense<[3.000000e+00, 4.000000e+00]> : tensor<2xf64>
-    %0 = arith.addf %cst, %cst_0 : tensor<2xf64>
-    return
+  func.func @main(%arg0: tensor<?xf64>, %arg1: tensor<?xf64>) -> tensor<?xf64> {
+    %0 = arith.addf %arg0, %arg1 : tensor<?xf64>
+    return %0 : tensor<?xf64>
   }
 }
 ```

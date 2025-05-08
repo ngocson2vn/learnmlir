@@ -41,7 +41,7 @@ message(STATUS "UBSAN_LIBRARY_DIR: $ENV{UBSAN_LIBRARY_DIR}")
 # Find compiler-rt library path
 # UBSAN_LIBRARY is necessary to resolve the error "undefined reference to __ubsan_handle_alignment_assumption_abort"
 find_library(UBSAN_LIBRARY
-  NAMES clang_rt.ubsan_standalone
+  NAMES libclang_rt.ubsan_standalone.a
   PATHS $ENV{UBSAN_LIBRARY_DIR}
   NO_DEFAULT_PATH
 )
