@@ -14,7 +14,9 @@
                 "${workspaceFolder}/llvm-project/llvm/include",
                 "${workspaceFolder}/llvm-project/mlir/include",
                 "${workspaceFolder}/llvm-project/build/include",
-                "${workspaceFolder}/llvm-project/build/tools/mlir/include"
+                "${workspaceFolder}/llvm-project/build/tools/mlir/include",
+                "${workspaceFolder}/examples/lower_toy_dialect",
+                "${workspaceFolder}/examples/lower_toy_dialect/build"
             ],
             "defines": [
                 "GOOGLE_CUDA",
