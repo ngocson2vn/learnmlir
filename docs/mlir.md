@@ -409,3 +409,37 @@ static void diagnoseInvalidOperandDominance(Operation &op, unsigned operandNo) {
                             << operandNo << " does not dominate this use: "
                             << op;
 ```
+
+# Location to string
+```C++
+static std::string locationToString(mlir::Location loc) {
+  std::string storage;
+  llvm::raw_string_ostream oss(storage);
+  loc.print(oss);
+  return storage;
+}
+```
+
+# rewriter.create
+```C+++
+    auto subViewOp = rewriter.create<memref::SubViewOp>(
+        op.getLoc(), adaptor.input(), subviewOffsets, subviewSizes,
+        subviewStrides);
+```
+<br/>
+
+-> llvm-project/mlir/include/mlir/IR/Builders.h
+```C++
+  /// Create an operation of specific op type at the current insertion point.
+  template <typename OpTy, typename... Args>
+  OpTy create(Location location, Args &&...args) {
+    OperationState state(location,
+                         getCheckRegisteredInfo<OpTy>(location.getContext()));
+    OpTy::build(*this, state, std::forward<Args>(args)...);
+    auto *op = create(state);
+    auto result = dyn_cast<OpTy>(op);
+    assert(result && "builder didn't return the right type");
+    return result;
+  }
+```
+-> llvm-project/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
