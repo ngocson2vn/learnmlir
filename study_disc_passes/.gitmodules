@@ -1,0 +1,4 @@
+[submodule "third_party/tensorflow"]
+	shallow = true
+[submodule "third_party/torch-mlir"]
+	shallow = true

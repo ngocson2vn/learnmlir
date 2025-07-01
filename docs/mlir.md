@@ -443,3 +443,12 @@ static std::string locationToString(mlir::Location loc) {
   }
 ```
 -> llvm-project/mlir/lib/Dialect/MemRef/IR/MemRefOps.cpp
+
+# PassRegistry
+llvm-project/mlir/lib/Pass/PassRegistry.cpp
+```C++
+/// Static mapping of all of the registered passes.
+static llvm::ManagedStatic<llvm::StringMap<PassInfo>> passRegistry;
+
+void mlir::registerPass(const PassAllocatorFunction &function);
+```

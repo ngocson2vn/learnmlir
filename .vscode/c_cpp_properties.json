@@ -16,7 +16,10 @@
                 "${workspaceFolder}/llvm-project/build/include",
                 "${workspaceFolder}/llvm-project/build/tools/mlir/include",
                 "${workspaceFolder}/examples/lower_toy_dialect",
-                "${workspaceFolder}/examples/lower_toy_dialect/build"
+                "${workspaceFolder}/examples/lower_toy_dialect/build",
+                "${workspaceFolder}/study_disc_passes/**",
+                "${workspaceFolder}/study_disc_passes/bazel-out/k8-dbg/bin/mlir/disc/transforms",
+                "${workspaceFolder}/study_disc_passes/bazel-out/k8-dbg/bin/external/org_tensorflow"
             ],
             "defines": [
                 "GOOGLE_CUDA",

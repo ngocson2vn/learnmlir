@@ -114,6 +114,10 @@
     "coroutine": "cpp",
     "latch": "cpp",
     "numbers": "cpp",
-    "semaphore": "cpp"
+    "semaphore": "cpp",
+    "WORKSPACE": "python",
+    "BUILD": "python",
+    "*.bzl": "python",
+    "*.bazel": "python"
   }
 }
