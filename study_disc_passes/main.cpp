@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
   }
 
   // Print the resulting module
-  llvm::outs() << "Lowered MLIR:\n";
+  llvm::errs() << "Lowered MLIR:\n";
   module->print(llvm::outs());
   return 0;
 }

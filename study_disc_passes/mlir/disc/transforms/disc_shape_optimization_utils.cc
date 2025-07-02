@@ -477,7 +477,7 @@ LogicalResult SymbolicDimMgr::save() {
     SmallVector<Attribute> newAttrs;
     for (Attribute attr : attrs) {
       auto name = attr.cast<FlatSymbolRefAttr>().getValue();
-      llvm::outs() << "Symbol name: " << name << "\n";
+      llvm::errs() << "Symbol name: " << name << "\n";
       auto sym = fn(name);
       assert(sym);
       SymbolicDimOp root = getRootSymbolicDim(sym);
@@ -710,7 +710,7 @@ LogicalResult SymbolicDimMgr::loadShapeConstraintGraph() {
             bool lhs_res = failed(build_sym_product(op.getLhs(), lhs));
             bool rhs_res = failed(build_sym_product(op.getRhs(), rhs));
             bool map_res = failed(mapSymbolicDimProductEqual(lhs, rhs));
-            llvm::outs() << op->getName().getStringRef() << "\n";
+            llvm::errs() << op->getName().getStringRef() << "\n";
             if (lhs_res || rhs_res || map_res)
               return WalkResult::interrupt();
             return WalkResult::advance();
