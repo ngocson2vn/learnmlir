@@ -1,11 +1,5 @@
 module {
   func.func @main(%arg0: !disc_ral.context) attributes {tf.entry_function = {input_placements = "cpu,cpu", inputs = "arg0,arg1", output_placements = "cpu", outputs = "out0"}} {
-    %c2 = arith.constant 2 : index
-    %c256 = arith.constant 256 : index
-    %c64 = arith.constant 64 : index
-    %c8 = arith.constant 8 : index
-    %c32 = arith.constant 32 : index
-    %c512 = arith.constant 512 : index
     %0 = llvm.mlir.constant(0 : i32) : i32
     %c4_i32 = arith.constant 4 : i32
     %c1_i32 = arith.constant 1 : i32
@@ -57,36 +51,55 @@ module {
           "lmhlo.constant"(%alloc_4) {disc.device = "gpu", value = dense<0.000000e+00> : tensor<f32>} : (memref<f32, #gpu.address_space<global>>) -> ()
           "lmhlo.multiply"(%reinterpret_cast_13, %reinterpret_cast_14, %reinterpret_cast_15) {disc.device = "gpu"} : (memref<?x4xf32, #gpu.address_space<global>>, memref<?x4xf32, #gpu.address_space<global>>, memref<?x4xf32, #gpu.address_space<global>>) -> ()
           "lmhlo.dynamic_reshape"(%reinterpret_cast_15, %alloca_3, %reinterpret_cast_16) {disc.device = "gpu"} : (memref<?x4xf32, #gpu.address_space<global>>, memref<2xi32>, memref<?x1xf32, #gpu.address_space<global>>) -> ()
-          scf.parallel (%arg1) = (%c0) to (%c1) step (%c1) {
-            %18 = "disc_shape.delinearize"(%arg1, %c1) : (index, index) -> index
-            %19 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
-            memref.store %19, %alloc_9[%18] : memref<1xf32, #gpu.address_space<global>>
+          %c0_17 = arith.constant 0 : index
+          %c1_18 = arith.constant 1 : index
+          %c1_19 = arith.constant 1 : index
+          %c0_20 = arith.constant 0 : index
+          %dim_21 = memref.dim %alloc_9, %c0_20 : memref<1xf32, #gpu.address_space<global>>
+          %17 = arith.muli %c1_19, %dim_21 : index
+          scf.parallel (%arg1) = (%c0_17) to (%17) step (%c1_18) {
+            %c1_26 = arith.constant 1 : index
+            %21 = "disc_shape.delinearize"(%arg1, %c1_26) : (index, index) -> index
+            %22 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
+            memref.store %22, %alloc_9[%21] : memref<1xf32, #gpu.address_space<global>>
             scf.yield
           }
-          %17 = arith.ceildivui %9, %c32 : index
-          scf.parallel (%arg1, %arg2) = (%c0, %c0) to (%17, %c512) step (%c1, %c1) {
-            %18 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
-            %19 = arith.cmpi ult, %arg2, %c1 : index
-            %20 = scf.if %19 -> (f32) {
-              %21 = scf.for %arg3 = %c0 to %c32 step %c1 iter_args(%arg4 = %18) -> (f32) {
-                %22 = arith.muli %arg1, %c32 : index
-                %23 = arith.addi %22, %arg3 : index
-                %24 = arith.cmpi slt, %23, %9 : index
-                %25 = scf.if %24 -> (f32) {
-                  %26 = memref.load %reinterpret_cast_16[%23, %arg2] : memref<?x1xf32, #gpu.address_space<global>>
-                  %27 = arith.addf %arg4, %26 : f32
-                  scf.yield %27 : f32
+          %c0_22 = arith.constant 0 : index
+          %c1_23 = arith.constant 1 : index
+          %dim_24 = memref.dim %reinterpret_cast_16, %c0_22 : memref<?x1xf32, #gpu.address_space<global>>
+          %dim_25 = memref.dim %reinterpret_cast_16, %c1_23 : memref<?x1xf32, #gpu.address_space<global>>
+          %c512 = arith.constant 512 : index
+          %c32 = arith.constant 32 : index
+          %18 = arith.ceildivui %dim_25, %c512 : index
+          %19 = arith.ceildivui %dim_24, %c32 : index
+          %20 = arith.muli %18, %19 : index
+          scf.parallel (%arg1, %arg2) = (%c0_22, %c0_22) to (%20, %c512) step (%c1_23, %c1_23) {
+            %21 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
+            %22 = arith.divui %arg1, %18 : index
+            %23 = arith.remui %arg1, %18 : index
+            %24 = arith.muli %23, %c512 : index
+            %25 = arith.addi %24, %arg2 : index
+            %26 = arith.cmpi ult, %25, %dim_25 : index
+            %27 = scf.if %26 -> (f32) {
+              %28 = scf.for %arg3 = %c0_22 to %c32 step %c1_23 iter_args(%arg4 = %21) -> (f32) {
+                %29 = arith.muli %22, %c32 : index
+                %30 = arith.addi %29, %arg3 : index
+                %31 = arith.cmpi slt, %30, %dim_24 : index
+                %32 = scf.if %31 -> (f32) {
+                  %33 = memref.load %reinterpret_cast_16[%30, %25] : memref<?x1xf32, #gpu.address_space<global>>
+                  %34 = arith.addf %arg4, %33 : f32
+                  scf.yield %34 : f32
                 } else {
                   scf.yield %arg4 : f32
                 }
-                scf.yield %25 : f32
+                scf.yield %32 : f32
               }
-              scf.yield %21 : f32
+              scf.yield %28 : f32
             } else {
-              scf.yield %18 : f32
+              scf.yield %21 : f32
             }
-            scf.if %19 {
-              %21 = memref.atomic_rmw addf %20, %alloc_9[%arg2] : (f32, memref<1xf32, #gpu.address_space<global>>) -> f32
+            scf.if %26 {
+              %28 = memref.atomic_rmw addf %27, %alloc_9[%25] : (f32, memref<1xf32, #gpu.address_space<global>>) -> f32
             }
             scf.yield
           }
@@ -97,75 +110,101 @@ module {
           "lmhlo.constant"(%alloc_4) {disc.device = "gpu", value = dense<0.000000e+00> : tensor<f32>} : (memref<f32, #gpu.address_space<global>>) -> ()
           "lmhlo.multiply"(%reinterpret_cast_13, %reinterpret_cast_14, %reinterpret_cast_15) {disc.device = "gpu"} : (memref<?x4xf32, #gpu.address_space<global>>, memref<?x4xf32, #gpu.address_space<global>>, memref<?x4xf32, #gpu.address_space<global>>) -> ()
           "lmhlo.dynamic_reshape"(%reinterpret_cast_15, %alloca_3, %reinterpret_cast_16) {disc.device = "gpu"} : (memref<?x4xf32, #gpu.address_space<global>>, memref<2xi32>, memref<?x1xf32, #gpu.address_space<global>>) -> ()
-          scf.parallel (%arg1) = (%c0) to (%c1) step (%c1) {
-            %18 = "disc_shape.delinearize"(%arg1, %c1) : (index, index) -> index
-            %19 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
-            memref.store %19, %alloc_9[%18] : memref<1xf32, #gpu.address_space<global>>
+          %c0_17 = arith.constant 0 : index
+          %c1_18 = arith.constant 1 : index
+          %c1_19 = arith.constant 1 : index
+          %c0_20 = arith.constant 0 : index
+          %dim_21 = memref.dim %alloc_9, %c0_20 : memref<1xf32, #gpu.address_space<global>>
+          %17 = arith.muli %c1_19, %dim_21 : index
+          scf.parallel (%arg1) = (%c0_17) to (%17) step (%c1_18) {
+            %c1_26 = arith.constant 1 : index
+            %21 = "disc_shape.delinearize"(%arg1, %c1_26) : (index, index) -> index
+            %22 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
+            memref.store %22, %alloc_9[%21] : memref<1xf32, #gpu.address_space<global>>
             scf.yield
           }
-          %17 = arith.ceildivui %9, %c512 : index
-          scf.parallel (%arg1, %arg2) = (%c0, %c0) to (%17, %c256) step (%c1, %c1) {
-            %18 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
-            %19 = arith.divui %arg2, %c32 : index
-            %20 = arith.remui %arg2, %c32 : index
-            %21 = arith.muli %20, %c8 : index
-            %22 = arith.addi %19, %21 : index
-            %alloc_17 = memref.alloc() : memref<256xf32, #gpu.address_space<workgroup>>
-            %23 = arith.cmpi ult, %20, %c1 : index
-            %24 = scf.if %23 -> (f32) {
-              %30 = scf.for %arg3 = %c0 to %c64 step %c1 iter_args(%arg4 = %18) -> (f32) {
-                %31 = arith.muli %arg1, %c8 : index
-                %32 = arith.addi %19, %31 : index
-                %33 = arith.muli %32, %c64 : index
-                %34 = arith.addi %arg3, %33 : index
-                %35 = arith.cmpi slt, %34, %9 : index
-                %36 = scf.if %35 -> (f32) {
-                  %37 = memref.load %reinterpret_cast_16[%34, %20] : memref<?x1xf32, #gpu.address_space<global>>
-                  %38 = arith.addf %arg4, %37 : f32
-                  scf.yield %38 : f32
+          %c0_22 = arith.constant 0 : index
+          %c1_23 = arith.constant 1 : index
+          %dim_24 = memref.dim %reinterpret_cast_16, %c0_22 : memref<?x1xf32, #gpu.address_space<global>>
+          %dim_25 = memref.dim %reinterpret_cast_16, %c1_23 : memref<?x1xf32, #gpu.address_space<global>>
+          %c32 = arith.constant 32 : index
+          %c8 = arith.constant 8 : index
+          %c64 = arith.constant 64 : index
+          %c512 = arith.constant 512 : index
+          %c256 = arith.constant 256 : index
+          %18 = arith.ceildivui %dim_25, %c32 : index
+          %19 = arith.ceildivui %dim_24, %c512 : index
+          %20 = arith.muli %18, %19 : index
+          scf.parallel (%arg1, %arg2) = (%c0_22, %c0_22) to (%20, %c256) step (%c1_23, %c1_23) {
+            %21 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
+            %22 = arith.divui %arg1, %18 : index
+            %23 = arith.remui %arg1, %18 : index
+            %24 = arith.divui %arg2, %c32 : index
+            %25 = arith.remui %arg2, %c32 : index
+            %26 = arith.muli %25, %c8 : index
+            %27 = arith.addi %24, %26 : index
+            %28 = arith.muli %23, %c32 : index
+            %29 = arith.addi %25, %28 : index
+            %alloc_26 = memref.alloc() : memref<256xf32, #gpu.address_space<workgroup>>
+            %30 = arith.cmpi ult, %29, %dim_25 : index
+            %31 = scf.if %30 -> (f32) {
+              %37 = scf.for %arg3 = %c0_22 to %c64 step %c1_23 iter_args(%arg4 = %21) -> (f32) {
+                %38 = arith.muli %22, %c8 : index
+                %39 = arith.addi %24, %38 : index
+                %40 = arith.muli %c64, %39 : index
+                %41 = arith.addi %arg3, %40 : index
+                %42 = arith.cmpi slt, %41, %dim_24 : index
+                %43 = scf.if %42 -> (f32) {
+                  %44 = memref.load %reinterpret_cast_16[%41, %29] : memref<?x1xf32, #gpu.address_space<global>>
+                  %45 = arith.addf %arg4, %44 : f32
+                  scf.yield %45 : f32
                 } else {
                   scf.yield %arg4 : f32
                 }
-                scf.yield %36 : f32
+                scf.yield %43 : f32
               }
-              scf.yield %30 : f32
+              scf.yield %37 : f32
             } else {
-              scf.yield %18 : f32
+              scf.yield %21 : f32
             }
-            memref.store %24, %alloc_17[%22] : memref<256xf32, #gpu.address_space<workgroup>>
+            memref.store %31, %alloc_26[%27] : memref<256xf32, #gpu.address_space<workgroup>>
             gpu.barrier
-            %25 = arith.cmpi slt, %19, %c4 : index
-            scf.if %25 {
-              %30 = arith.addi %22, %c4 : index
-              %31 = memref.load %alloc_17[%22] : memref<256xf32, #gpu.address_space<workgroup>>
-              %32 = memref.load %alloc_17[%30] : memref<256xf32, #gpu.address_space<workgroup>>
-              %33 = arith.addf %31, %32 : f32
-              memref.store %33, %alloc_17[%22] : memref<256xf32, #gpu.address_space<workgroup>>
-            }
-            gpu.barrier
-            %26 = arith.cmpi slt, %19, %c2 : index
-            scf.if %26 {
-              %30 = arith.addi %22, %c2 : index
-              %31 = memref.load %alloc_17[%22] : memref<256xf32, #gpu.address_space<workgroup>>
-              %32 = memref.load %alloc_17[%30] : memref<256xf32, #gpu.address_space<workgroup>>
-              %33 = arith.addf %31, %32 : f32
-              memref.store %33, %alloc_17[%22] : memref<256xf32, #gpu.address_space<workgroup>>
+            %c4_27 = arith.constant 4 : index
+            %32 = arith.cmpi slt, %24, %c4_27 : index
+            scf.if %32 {
+              %37 = arith.addi %27, %c4_27 : index
+              %38 = memref.load %alloc_26[%27] : memref<256xf32, #gpu.address_space<workgroup>>
+              %39 = memref.load %alloc_26[%37] : memref<256xf32, #gpu.address_space<workgroup>>
+              %40 = arith.addf %38, %39 : f32
+              memref.store %40, %alloc_26[%27] : memref<256xf32, #gpu.address_space<workgroup>>
             }
             gpu.barrier
-            %27 = arith.cmpi slt, %19, %c1 : index
-            scf.if %27 {
-              %30 = arith.addi %22, %c1 : index
-              %31 = memref.load %alloc_17[%22] : memref<256xf32, #gpu.address_space<workgroup>>
-              %32 = memref.load %alloc_17[%30] : memref<256xf32, #gpu.address_space<workgroup>>
-              %33 = arith.addf %31, %32 : f32
-              memref.store %33, %alloc_17[%22] : memref<256xf32, #gpu.address_space<workgroup>>
+            %c2 = arith.constant 2 : index
+            %33 = arith.cmpi slt, %24, %c2 : index
+            scf.if %33 {
+              %37 = arith.addi %27, %c2 : index
+              %38 = memref.load %alloc_26[%27] : memref<256xf32, #gpu.address_space<workgroup>>
+              %39 = memref.load %alloc_26[%37] : memref<256xf32, #gpu.address_space<workgroup>>
+              %40 = arith.addf %38, %39 : f32
+              memref.store %40, %alloc_26[%27] : memref<256xf32, #gpu.address_space<workgroup>>
             }
             gpu.barrier
-            %28 = arith.cmpi eq, %19, %c0 : index
-            %29 = arith.andi %28, %23 : i1
-            scf.if %29 {
-              %30 = memref.load %alloc_17[%22] : memref<256xf32, #gpu.address_space<workgroup>>
-              %31 = memref.atomic_rmw addf %30, %alloc_9[%20] : (f32, memref<1xf32, #gpu.address_space<global>>) -> f32
+            %c1_28 = arith.constant 1 : index
+            %34 = arith.cmpi slt, %24, %c1_28 : index
+            scf.if %34 {
+              %37 = arith.addi %27, %c1_28 : index
+              %38 = memref.load %alloc_26[%27] : memref<256xf32, #gpu.address_space<workgroup>>
+              %39 = memref.load %alloc_26[%37] : memref<256xf32, #gpu.address_space<workgroup>>
+              %40 = arith.addf %38, %39 : f32
+              memref.store %40, %alloc_26[%27] : memref<256xf32, #gpu.address_space<workgroup>>
+            }
+            gpu.barrier
+            %35 = arith.cmpi eq, %24, %c0_22 : index
+            %36 = arith.andi %35, %30 : i1
+            scf.if %36 {
+              %37 = arith.addi %27, %c1_23 : index
+              %38 = memref.load %alloc_26[%27] : memref<256xf32, #gpu.address_space<workgroup>>
+              %39 = memref.atomic_rmw addf %38, %alloc_9[%29] : (f32, memref<1xf32, #gpu.address_space<global>>) -> f32
             }
             scf.yield
           }
@@ -181,36 +220,55 @@ module {
           "lmhlo.dynamic_broadcast_in_dim"(%alloc_2, %alloca, %alloc_6) {broadcast_dimensions = dense<[0, 1]> : tensor<2xi64>, disc.device = "gpu"} : (memref<?x4xf32, #gpu.address_space<global>>, memref<2xindex>, memref<?x4xf32, #gpu.address_space<global>>) -> ()
           "lmhlo.multiply"(%alloc_5, %alloc_6, %alloc_7) {disc.device = "gpu"} : (memref<?x4xf32, #gpu.address_space<global>>, memref<?x4xf32, #gpu.address_space<global>>, memref<?x4xf32, #gpu.address_space<global>>) -> ()
           "lmhlo.dynamic_reshape"(%alloc_7, %alloca_3, %alloc_8) {disc.device = "gpu"} : (memref<?x4xf32, #gpu.address_space<global>>, memref<2xi32>, memref<?x1xf32, #gpu.address_space<global>>) -> ()
-          scf.parallel (%arg1) = (%c0) to (%c1) step (%c1) {
-            %18 = "disc_shape.delinearize"(%arg1, %c1) : (index, index) -> index
-            %19 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
-            memref.store %19, %alloc_9[%18] : memref<1xf32, #gpu.address_space<global>>
+          %c0_13 = arith.constant 0 : index
+          %c1_14 = arith.constant 1 : index
+          %c1_15 = arith.constant 1 : index
+          %c0_16 = arith.constant 0 : index
+          %dim_17 = memref.dim %alloc_9, %c0_16 : memref<1xf32, #gpu.address_space<global>>
+          %17 = arith.muli %c1_15, %dim_17 : index
+          scf.parallel (%arg1) = (%c0_13) to (%17) step (%c1_14) {
+            %c1_22 = arith.constant 1 : index
+            %21 = "disc_shape.delinearize"(%arg1, %c1_22) : (index, index) -> index
+            %22 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
+            memref.store %22, %alloc_9[%21] : memref<1xf32, #gpu.address_space<global>>
             scf.yield
           }
-          %17 = arith.ceildivui %9, %c32 : index
-          scf.parallel (%arg1, %arg2) = (%c0, %c0) to (%17, %c512) step (%c1, %c1) {
-            %18 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
-            %19 = arith.cmpi ult, %arg2, %c1 : index
-            %20 = scf.if %19 -> (f32) {
-              %21 = scf.for %arg3 = %c0 to %c32 step %c1 iter_args(%arg4 = %18) -> (f32) {
-                %22 = arith.muli %arg1, %c32 : index
-                %23 = arith.addi %22, %arg3 : index
-                %24 = arith.cmpi slt, %23, %9 : index
-                %25 = scf.if %24 -> (f32) {
-                  %26 = memref.load %alloc_8[%23, %arg2] : memref<?x1xf32, #gpu.address_space<global>>
-                  %27 = arith.addf %arg4, %26 : f32
-                  scf.yield %27 : f32
+          %c0_18 = arith.constant 0 : index
+          %c1_19 = arith.constant 1 : index
+          %dim_20 = memref.dim %alloc_8, %c0_18 : memref<?x1xf32, #gpu.address_space<global>>
+          %dim_21 = memref.dim %alloc_8, %c1_19 : memref<?x1xf32, #gpu.address_space<global>>
+          %c512 = arith.constant 512 : index
+          %c32 = arith.constant 32 : index
+          %18 = arith.ceildivui %dim_21, %c512 : index
+          %19 = arith.ceildivui %dim_20, %c32 : index
+          %20 = arith.muli %18, %19 : index
+          scf.parallel (%arg1, %arg2) = (%c0_18, %c0_18) to (%20, %c512) step (%c1_19, %c1_19) {
+            %21 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
+            %22 = arith.divui %arg1, %18 : index
+            %23 = arith.remui %arg1, %18 : index
+            %24 = arith.muli %23, %c512 : index
+            %25 = arith.addi %24, %arg2 : index
+            %26 = arith.cmpi ult, %25, %dim_21 : index
+            %27 = scf.if %26 -> (f32) {
+              %28 = scf.for %arg3 = %c0_18 to %c32 step %c1_19 iter_args(%arg4 = %21) -> (f32) {
+                %29 = arith.muli %22, %c32 : index
+                %30 = arith.addi %29, %arg3 : index
+                %31 = arith.cmpi slt, %30, %dim_20 : index
+                %32 = scf.if %31 -> (f32) {
+                  %33 = memref.load %alloc_8[%30, %25] : memref<?x1xf32, #gpu.address_space<global>>
+                  %34 = arith.addf %arg4, %33 : f32
+                  scf.yield %34 : f32
                 } else {
                   scf.yield %arg4 : f32
                 }
-                scf.yield %25 : f32
+                scf.yield %32 : f32
               }
-              scf.yield %21 : f32
+              scf.yield %28 : f32
             } else {
-              scf.yield %18 : f32
+              scf.yield %21 : f32
             }
-            scf.if %19 {
-              %21 = memref.atomic_rmw addf %20, %alloc_9[%arg2] : (f32, memref<1xf32, #gpu.address_space<global>>) -> f32
+            scf.if %26 {
+              %28 = memref.atomic_rmw addf %27, %alloc_9[%25] : (f32, memref<1xf32, #gpu.address_space<global>>) -> f32
             }
             scf.yield
           }
@@ -223,75 +281,101 @@ module {
           "lmhlo.dynamic_broadcast_in_dim"(%alloc_2, %alloca, %alloc_6) {broadcast_dimensions = dense<[0, 1]> : tensor<2xi64>, disc.device = "gpu"} : (memref<?x4xf32, #gpu.address_space<global>>, memref<2xindex>, memref<?x4xf32, #gpu.address_space<global>>) -> ()
           "lmhlo.multiply"(%alloc_5, %alloc_6, %alloc_7) {disc.device = "gpu"} : (memref<?x4xf32, #gpu.address_space<global>>, memref<?x4xf32, #gpu.address_space<global>>, memref<?x4xf32, #gpu.address_space<global>>) -> ()
           "lmhlo.dynamic_reshape"(%alloc_7, %alloca_3, %alloc_8) {disc.device = "gpu"} : (memref<?x4xf32, #gpu.address_space<global>>, memref<2xi32>, memref<?x1xf32, #gpu.address_space<global>>) -> ()
-          scf.parallel (%arg1) = (%c0) to (%c1) step (%c1) {
-            %18 = "disc_shape.delinearize"(%arg1, %c1) : (index, index) -> index
-            %19 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
-            memref.store %19, %alloc_9[%18] : memref<1xf32, #gpu.address_space<global>>
+          %c0_13 = arith.constant 0 : index
+          %c1_14 = arith.constant 1 : index
+          %c1_15 = arith.constant 1 : index
+          %c0_16 = arith.constant 0 : index
+          %dim_17 = memref.dim %alloc_9, %c0_16 : memref<1xf32, #gpu.address_space<global>>
+          %17 = arith.muli %c1_15, %dim_17 : index
+          scf.parallel (%arg1) = (%c0_13) to (%17) step (%c1_14) {
+            %c1_22 = arith.constant 1 : index
+            %21 = "disc_shape.delinearize"(%arg1, %c1_22) : (index, index) -> index
+            %22 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
+            memref.store %22, %alloc_9[%21] : memref<1xf32, #gpu.address_space<global>>
             scf.yield
           }
-          %17 = arith.ceildivui %9, %c512 : index
-          scf.parallel (%arg1, %arg2) = (%c0, %c0) to (%17, %c256) step (%c1, %c1) {
-            %18 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
-            %19 = arith.divui %arg2, %c32 : index
-            %20 = arith.remui %arg2, %c32 : index
-            %21 = arith.muli %20, %c8 : index
-            %22 = arith.addi %19, %21 : index
-            %alloc_13 = memref.alloc() : memref<256xf32, #gpu.address_space<workgroup>>
-            %23 = arith.cmpi ult, %20, %c1 : index
-            %24 = scf.if %23 -> (f32) {
-              %30 = scf.for %arg3 = %c0 to %c64 step %c1 iter_args(%arg4 = %18) -> (f32) {
-                %31 = arith.muli %arg1, %c8 : index
-                %32 = arith.addi %19, %31 : index
-                %33 = arith.muli %32, %c64 : index
-                %34 = arith.addi %arg3, %33 : index
-                %35 = arith.cmpi slt, %34, %9 : index
-                %36 = scf.if %35 -> (f32) {
-                  %37 = memref.load %alloc_8[%34, %20] : memref<?x1xf32, #gpu.address_space<global>>
-                  %38 = arith.addf %arg4, %37 : f32
-                  scf.yield %38 : f32
+          %c0_18 = arith.constant 0 : index
+          %c1_19 = arith.constant 1 : index
+          %dim_20 = memref.dim %alloc_8, %c0_18 : memref<?x1xf32, #gpu.address_space<global>>
+          %dim_21 = memref.dim %alloc_8, %c1_19 : memref<?x1xf32, #gpu.address_space<global>>
+          %c32 = arith.constant 32 : index
+          %c8 = arith.constant 8 : index
+          %c64 = arith.constant 64 : index
+          %c512 = arith.constant 512 : index
+          %c256 = arith.constant 256 : index
+          %18 = arith.ceildivui %dim_21, %c32 : index
+          %19 = arith.ceildivui %dim_20, %c512 : index
+          %20 = arith.muli %18, %19 : index
+          scf.parallel (%arg1, %arg2) = (%c0_18, %c0_18) to (%20, %c256) step (%c1_19, %c1_19) {
+            %21 = memref.load %alloc_4[] : memref<f32, #gpu.address_space<global>>
+            %22 = arith.divui %arg1, %18 : index
+            %23 = arith.remui %arg1, %18 : index
+            %24 = arith.divui %arg2, %c32 : index
+            %25 = arith.remui %arg2, %c32 : index
+            %26 = arith.muli %25, %c8 : index
+            %27 = arith.addi %24, %26 : index
+            %28 = arith.muli %23, %c32 : index
+            %29 = arith.addi %25, %28 : index
+            %alloc_22 = memref.alloc() : memref<256xf32, #gpu.address_space<workgroup>>
+            %30 = arith.cmpi ult, %29, %dim_21 : index
+            %31 = scf.if %30 -> (f32) {
+              %37 = scf.for %arg3 = %c0_18 to %c64 step %c1_19 iter_args(%arg4 = %21) -> (f32) {
+                %38 = arith.muli %22, %c8 : index
+                %39 = arith.addi %24, %38 : index
+                %40 = arith.muli %c64, %39 : index
+                %41 = arith.addi %arg3, %40 : index
+                %42 = arith.cmpi slt, %41, %dim_20 : index
+                %43 = scf.if %42 -> (f32) {
+                  %44 = memref.load %alloc_8[%41, %29] : memref<?x1xf32, #gpu.address_space<global>>
+                  %45 = arith.addf %arg4, %44 : f32
+                  scf.yield %45 : f32
                 } else {
                   scf.yield %arg4 : f32
                 }
-                scf.yield %36 : f32
+                scf.yield %43 : f32
               }
-              scf.yield %30 : f32
+              scf.yield %37 : f32
             } else {
-              scf.yield %18 : f32
+              scf.yield %21 : f32
             }
-            memref.store %24, %alloc_13[%22] : memref<256xf32, #gpu.address_space<workgroup>>
+            memref.store %31, %alloc_22[%27] : memref<256xf32, #gpu.address_space<workgroup>>
             gpu.barrier
-            %25 = arith.cmpi slt, %19, %c4 : index
-            scf.if %25 {
-              %30 = arith.addi %22, %c4 : index
-              %31 = memref.load %alloc_13[%22] : memref<256xf32, #gpu.address_space<workgroup>>
-              %32 = memref.load %alloc_13[%30] : memref<256xf32, #gpu.address_space<workgroup>>
-              %33 = arith.addf %31, %32 : f32
-              memref.store %33, %alloc_13[%22] : memref<256xf32, #gpu.address_space<workgroup>>
-            }
-            gpu.barrier
-            %26 = arith.cmpi slt, %19, %c2 : index
-            scf.if %26 {
-              %30 = arith.addi %22, %c2 : index
-              %31 = memref.load %alloc_13[%22] : memref<256xf32, #gpu.address_space<workgroup>>
-              %32 = memref.load %alloc_13[%30] : memref<256xf32, #gpu.address_space<workgroup>>
-              %33 = arith.addf %31, %32 : f32
-              memref.store %33, %alloc_13[%22] : memref<256xf32, #gpu.address_space<workgroup>>
+            %c4_23 = arith.constant 4 : index
+            %32 = arith.cmpi slt, %24, %c4_23 : index
+            scf.if %32 {
+              %37 = arith.addi %27, %c4_23 : index
+              %38 = memref.load %alloc_22[%27] : memref<256xf32, #gpu.address_space<workgroup>>
+              %39 = memref.load %alloc_22[%37] : memref<256xf32, #gpu.address_space<workgroup>>
+              %40 = arith.addf %38, %39 : f32
+              memref.store %40, %alloc_22[%27] : memref<256xf32, #gpu.address_space<workgroup>>
             }
             gpu.barrier
-            %27 = arith.cmpi slt, %19, %c1 : index
-            scf.if %27 {
-              %30 = arith.addi %22, %c1 : index
-              %31 = memref.load %alloc_13[%22] : memref<256xf32, #gpu.address_space<workgroup>>
-              %32 = memref.load %alloc_13[%30] : memref<256xf32, #gpu.address_space<workgroup>>
-              %33 = arith.addf %31, %32 : f32
-              memref.store %33, %alloc_13[%22] : memref<256xf32, #gpu.address_space<workgroup>>
+            %c2 = arith.constant 2 : index
+            %33 = arith.cmpi slt, %24, %c2 : index
+            scf.if %33 {
+              %37 = arith.addi %27, %c2 : index
+              %38 = memref.load %alloc_22[%27] : memref<256xf32, #gpu.address_space<workgroup>>
+              %39 = memref.load %alloc_22[%37] : memref<256xf32, #gpu.address_space<workgroup>>
+              %40 = arith.addf %38, %39 : f32
+              memref.store %40, %alloc_22[%27] : memref<256xf32, #gpu.address_space<workgroup>>
             }
             gpu.barrier
-            %28 = arith.cmpi eq, %19, %c0 : index
-            %29 = arith.andi %28, %23 : i1
-            scf.if %29 {
-              %30 = memref.load %alloc_13[%22] : memref<256xf32, #gpu.address_space<workgroup>>
-              %31 = memref.atomic_rmw addf %30, %alloc_9[%20] : (f32, memref<1xf32, #gpu.address_space<global>>) -> f32
+            %c1_24 = arith.constant 1 : index
+            %34 = arith.cmpi slt, %24, %c1_24 : index
+            scf.if %34 {
+              %37 = arith.addi %27, %c1_24 : index
+              %38 = memref.load %alloc_22[%27] : memref<256xf32, #gpu.address_space<workgroup>>
+              %39 = memref.load %alloc_22[%37] : memref<256xf32, #gpu.address_space<workgroup>>
+              %40 = arith.addf %38, %39 : f32
+              memref.store %40, %alloc_22[%27] : memref<256xf32, #gpu.address_space<workgroup>>
+            }
+            gpu.barrier
+            %35 = arith.cmpi eq, %24, %c0_18 : index
+            %36 = arith.andi %35, %30 : i1
+            scf.if %36 {
+              %37 = arith.addi %27, %c1_19 : index
+              %38 = memref.load %alloc_22[%27] : memref<256xf32, #gpu.address_space<workgroup>>
+              %39 = memref.atomic_rmw addf %38, %alloc_9[%29] : (f32, memref<1xf32, #gpu.address_space<global>>) -> f32
             }
             scf.yield
           }

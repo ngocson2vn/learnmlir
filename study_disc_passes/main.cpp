@@ -42,6 +42,10 @@ static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::Positional, llvm::cl::desc("<input file>"),
     llvm::cl::init("-"));
 
+static llvm::cl::opt<bool> withInline("with-inline",
+  llvm::cl::desc("whether InputInlineFusionPattern is activated or not"),
+  llvm::cl::init(false));
+
 int main(int argc, char **argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv, "Toy dialect lowering demo\n");
 
@@ -90,7 +94,7 @@ int main(int argc, char **argv) {
 
   // Set up the pass manager
   PassManager pm(&context);
-  pm.addNestedPass<func::FuncOp>(disc_ral::createDiscLhloLegalizeRootsToParallelLoopsPass());
+  pm.addNestedPass<func::FuncOp>(disc_ral::createDiscLhloLegalizeRootsToParallelLoopsPass(-1, 8, 0, withInline.getValue()));
 
   // Apply the pass
   if (failed(pm.run(module.get()))) {

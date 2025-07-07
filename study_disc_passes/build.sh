@@ -23,7 +23,7 @@ SRC_FILE_LIST=+main.cpp
 SRC_FILE_LIST=${SRC_FILE_LIST},+mlir/disc/transforms/.*.cc
 # SRC_FILE_LIST=${SRC_FILE_LIST},+tensorflow/core/common_runtime/executor.cc
 
-CC=clang bazel --output_user_root=./build build //:main \
+CC=gcc bazel --output_user_root=./build build //:main \
 --disk_cache=./build/cache \
 --compilation_mode=opt --config=cuda \
 --linkopt=-g --per_file_copt=${SRC_FILE_LIST}@-O0,-g,-fno-inline \

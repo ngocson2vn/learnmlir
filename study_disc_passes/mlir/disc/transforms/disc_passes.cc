@@ -5655,11 +5655,15 @@ LogicalResult HandleCpuFusionOp(OpBuilder& b, Operation* fusion,
 // after these are done, a lmhlo.FusionOp with mhlo inside would be more
 // friendly to the legacy FusedIrEmitter.
 struct DiscLhloLegalizeRootsToParallelLoops : public impl::DiscLhloLegalizeRootsToParallelLoopsPassBase<DiscLhloLegalizeRootsToParallelLoops> {
-  DiscLhloLegalizeRootsToParallelLoops(int core_count, int cc_major,
-                                       int cc_minor) {
+  bool with_inline_ = false;
+  DiscLhloLegalizeRootsToParallelLoops(int core_count,
+                                       int cc_major,
+                                       int cc_minor,
+                                       bool with_inline) {
     core_count_ = core_count;
     cc_major_ = cc_major;
     cc_minor_ = cc_minor;
+    with_inline_ = with_inline;
   }
 
   void getDependentDialects(DialectRegistry& registry) const override {
@@ -5779,6 +5783,11 @@ struct DiscLhloLegalizeRootsToParallelLoops : public impl::DiscLhloLegalizeRoots
         return;
       }
     }
+
+    if (!with_inline_) {
+      return;
+    }
+
     // Input inline for kStitch fusions on GPU.
     {
       auto* context = &this->getContext();
@@ -5847,9 +5856,9 @@ void registerAllDiscPasses() { registerDISCPasses(); }
 
 std::unique_ptr<OperationPass<func::FuncOp>>
 createDiscLhloLegalizeRootsToParallelLoopsPass(int core_count, int cc_major,
-                                               int cc_minor) {
+                                               int cc_minor, bool with_inline) {
   return std::make_unique<DiscLhloLegalizeRootsToParallelLoops>(
-      core_count, cc_major, cc_minor);
+      core_count, cc_major, cc_minor, with_inline);
 }
 
 }  // namespace disc_ral

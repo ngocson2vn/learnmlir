@@ -19,7 +19,8 @@ void registerAllDiscPasses();
 std::unique_ptr<OperationPass<func::FuncOp>>
 createDiscLhloLegalizeRootsToParallelLoopsPass(int sm_count = -1,
                                                int cc_major = 8,
-                                               int cc_minor = 0);
+                                               int cc_minor = 0,
+                                               bool with_inline = false);
 
 }  // namespace disc_ral
 }  // namespace mlir
