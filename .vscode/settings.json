@@ -118,6 +118,10 @@
     "WORKSPACE": "python",
     "BUILD": "python",
     "*.bzl": "python",
-    "*.bazel": "python"
+    "*.bazel": "python",
+    "compare": "cpp",
+    "concepts": "cpp",
+    "ranges": "cpp",
+    "stop_token": "cpp"
   }
 }

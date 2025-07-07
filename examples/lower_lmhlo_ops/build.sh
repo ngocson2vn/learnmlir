@@ -1,0 +1,196 @@
+set -e
+
+export LD_LIBRARY_PATH=/usr/local/cuda-11.4/lib64:/usr/local/cuda-11.4/extras/CUPTI/lib64
+export TF2_BEHAVIOR=1
+
+cd /data00/home/son.nguyen/.cache/bazel/_bazel_son.nguyen/efe6e648121edb8938fadfb33ca17e1b/execroot/__main__
+
+/usr/bin/clang -Xclang -ast-print -fsyntax-only \
+-U_FORTIFY_SOURCE -fstack-protector -Wall -fno-omit-frame-pointer -g '-std=c++0x' -MD -MF -fPIC '-DLLVM_ON_UNIX=1' '-DHAVE_BACKTRACE=1' '-DBACKTRACE_HEADER=<execinfo.h>' '-DLTDL_SHLIB_EXT=".so"' '-DLLVM_PLUGIN_EXT=".so"' '-DLLVM_ENABLE_THREADS=1' '-DHAVE_DEREGISTER_FRAME=1' '-DHAVE_LIBPTHREAD=1' '-DHAVE_PTHREAD_GETNAME_NP=1' '-DHAVE_PTHREAD_H=1' '-DHAVE_PTHREAD_SETNAME_NP=1' '-DHAVE_REGISTER_FRAME=1' '-DHAVE_SETENV_R=1' '-DHAVE_STRERROR_R=1' '-DHAVE_SYSEXITS_H=1' '-DHAVE_UNISTD_H=1' -D_GNU_SOURCE '-DHAVE_LINK_H=1' '-DHAVE_LSEEK64=1' '-DHAVE_MALLINFO=1' '-DHAVE_SBRK=1' '-DHAVE_STRUCT_STAT_ST_MTIM_TV_NSEC=1' '-DLLVM_NATIVE_ARCH="X86"' '-DLLVM_NATIVE_ASMPARSER=LLVMInitializeX86AsmParser' '-DLLVM_NATIVE_ASMPRINTER=LLVMInitializeX86AsmPrinter' '-DLLVM_NATIVE_DISASSEMBLER=LLVMInitializeX86Disassembler' '-DLLVM_NATIVE_TARGET=LLVMInitializeX86Target' '-DLLVM_NATIVE_TARGETINFO=LLVMInitializeX86TargetInfo' '-DLLVM_NATIVE_TARGETMC=LLVMInitializeX86TargetMC' '-DLLVM_NATIVE_TARGETMCA=LLVMInitializeX86TargetMCA' '-DLLVM_HOST_TRIPLE="x86_64-unknown-linux-gnu"' '-DLLVM_DEFAULT_TARGET_TRIPLE="x86_64-unknown-linux-gnu"' -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS '-DBLAKE3_USE_NEON=0' \
+-iquote . \
+-iquote bazel-out/k8-dbg/bin \
+-iquote external/org_tensorflow \
+-iquote bazel-out/k8-dbg/bin/external/org_tensorflow \
+-iquote external/llvm-project \
+-iquote bazel-out/k8-dbg/bin/external/llvm-project \
+-iquote external/llvm_terminfo \
+-iquote bazel-out/k8-dbg/bin/external/llvm_terminfo \
+-iquote external/llvm_zlib \
+-iquote bazel-out/k8-dbg/bin/external/llvm_zlib \
+-iquote external/stablehlo \
+-iquote bazel-out/k8-dbg/bin/external/stablehlo \
+-iquote external/bazel_tools \
+-iquote bazel-out/k8-dbg/bin/external/bazel_tools \
+-Ibazel-out/k8-dbg/bin/external/org_tensorflow/tensorflow/compiler/xla/mlir_hlo/_virtual_includes/canonicalize_inc_gen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/BuiltinAttributeInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/BuiltinAttributesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/BuiltinDialectIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/BuiltinLocationAttributesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/BuiltinOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/BuiltinTypeInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/BuiltinTypesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/CallOpInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/CastOpInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/FunctionInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/InferTypeOpInterfaceIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/OpAsmInterfaceIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/RegionKindInterfaceIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SideEffectInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SubElementInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SymbolInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/TensorEncodingIncGen \
+-Ibazel-out/k8-dbg/bin/external/org_tensorflow/tensorflow/compiler/xla/mlir_hlo/_virtual_includes/hlo_ops_inc_gen \
+-Ibazel-out/k8-dbg/bin/external/org_tensorflow/tensorflow/compiler/xla/mlir_hlo/_virtual_includes/hlo_ops_pattern_inc_gen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ArithBaseIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ArithCanonicalizationIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ArithOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/InferIntRangeInterfaceIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/VectorInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ControlFlowInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/LoopLikeInterfaceIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/DialectUtilsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ViewLikeInterfaceIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ComplexAttributesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ComplexBaseIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ComplexOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ControlFlowOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/FuncIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/CopyOpInterfaceIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/MemRefBaseIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/MemRefOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ShapedOpInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/AsmParserTokenKinds \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/QuantOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/PDLOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/PDLTypesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/PDLInterpOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ConversionPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/TransformsPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/MLIRShapeCanonicalizationIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ShapeOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/AffineMemoryOpInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/AffineOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/DestinationStyleOpInterfaceIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ParallelCombiningOpInterfaceIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/TensorOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/TilingInterfaceIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SparseTensorAttrDefsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SparseTensorOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/org_tensorflow/tensorflow/compiler/xla/mlir_hlo/_virtual_includes/lhlo_ops_inc_gen \
+-Ibazel-out/k8-dbg/bin/external/org_tensorflow/tensorflow/compiler/xla/mlir_hlo/_virtual_includes/lhlo_ops_structs_inc_gen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/AllocationOpInterfaceIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/BufferizableOpInterfaceIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/BufferizationBaseIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/BufferizationOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/AMDGPUIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/LLVMDialectInterfaceIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/LLVMIntrinsicOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/LLVMOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/LLVMTypesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ROCDLOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/AMXIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/AffinePassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SCFIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SCFPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/MaskingInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/VectorOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SPIRVAttrUtilsGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SPIRVAttributesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SPIRVAvailabilityIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SPIRVCanonicalizationIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SPIRVOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SPIRVSerializationGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/MathBaseIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/MathOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ArithPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/BufferizationPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/FuncTransformsPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ArmNeonIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ArmSVEIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/AsyncOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/AsyncPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/BufferizationTransformOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/TransformDialectEnumsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/TransformDialectIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/TransformDialectInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/TransformOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/TransformTypesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/OpenACCOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/DLTIBaseIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/GPUBaseIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/GPUOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/GPUPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ROCDLConversionIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/LLVMConversionIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/LLVMPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/NVVMOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/LLVMIntrinsicConversionIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/OpenMPInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/OpenMPOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/OpenMPTypeInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/llvm/_virtual_includes/InstCombineTableGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/NVVMConversionIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/LinalgEnumsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/LinalgInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/LinalgOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/LinalgStructuredOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/VectorPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/X86VectorIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/GPUToNVVMGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/GPUToROCDLTGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/IndexEnumsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/IndexOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/LinalgPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/TensorPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/NVGPUIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/NVGPUPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ShapeToStandardGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/TosaDialectIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/TosaInterfacesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/TosaPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/EmitCAttributesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/EmitCOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/GPUTransformOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/LinalgTransformOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/MLProgramAttributesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/MLProgramOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/MLProgramTypesIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/MemRefTransformOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/MemRefPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SCFTransformOpsIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SPIRVPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/ShapeTransformsPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/SparseTensorPassIncGen \
+-Ibazel-out/k8-dbg/bin/external/llvm-project/mlir/_virtual_includes/TransformDialectTransformsIncGen \
+-isystem external/org_tensorflow/tensorflow/compiler/xla/mlir_hlo/include \
+-isystem bazel-out/k8-dbg/bin/external/org_tensorflow/tensorflow/compiler/xla/mlir_hlo/include \
+-isystem external/llvm-project/llvm/include \
+-isystem bazel-out/k8-dbg/bin/external/llvm-project/llvm/include \
+-isystem external/llvm-project/mlir/include \
+-isystem bazel-out/k8-dbg/bin/external/llvm-project/mlir/include \
+-isystem external/stablehlo \
+-isystem bazel-out/k8-dbg/bin/external/stablehlo \
+-isystem external/llvm-project/mlir/lib/Conversion/FuncToSPIRV \
+-isystem bazel-out/k8-dbg/bin/external/llvm-project/mlir/lib/Conversion/FuncToSPIRV \
+-isystem external/llvm-project/mlir/lib/Conversion/MathToSPIRV \
+-isystem bazel-out/k8-dbg/bin/external/llvm-project/mlir/lib/Conversion/MathToSPIRV \
+-isystem external/llvm-project/mlir/lib/Conversions/GPUToSPIRV \
+-isystem bazel-out/k8-dbg/bin/external/llvm-project/mlir/lib/Conversions/GPUToSPIRV \
+-isystem external/llvm-project/mlir/lib/Conversion/MemRefToSPIRV \
+-isystem bazel-out/k8-dbg/bin/external/llvm-project/mlir/lib/Conversion/MemRefToSPIRV \
+-isystem external/llvm-project/mlir/lib/Conversion/TensorToLinalg \
+-isystem bazel-out/k8-dbg/bin/external/llvm-project/mlir/lib/Conversion/TensorToLinalg \
+-isystem external/llvm-project/mlir/lib/Conversion/TensorToSPIRV \
+-isystem bazel-out/k8-dbg/bin/external/llvm-project/mlir/lib/Conversion/TensorToSPIRV \
+-isystem external/llvm-project/mlir/lib/Conversion/TosaToArith \
+-isystem bazel-out/k8-dbg/bin/external/llvm-project/mlir/lib/Conversion/TosaToArith \
+-isystem external/llvm-project/mlir/lib/Conversion/TosaToLinalg \
+-isystem bazel-out/k8-dbg/bin/external/llvm-project/mlir/lib/Conversion/TosaToLinalg \
+-isystem external/llvm-project/mlir/lib/Conversion/TosaToSCF \
+-isystem bazel-out/k8-dbg/bin/external/llvm-project/mlir/lib/Conversion/TosaToSCF \
+-isystem external/llvm-project/mlir/lib/Conversion/TosaToTensor \
+-isystem bazel-out/k8-dbg/bin/external/llvm-project/mlir/lib/Conversion/TosaToTensor \
+-Wno-all -Wno-extra -Wno-deprecated -Wno-deprecated-declarations -Wno-ignored-attributes -Wno-array-bounds -Wunused-result '-Werror=unused-result' -Wswitch '-Werror=switch' -DAUTOLOAD_DYNAMIC_KERNELS '-std=c++17' -Wno-builtin-macro-redefined '-D__DATE__="redacted"' '-D__TIMESTAMP__="redacted"' '-D__TIME__="redacted"' \
+-c lower_lmhlo_ops/main.cc > lower_lmhlo_ops/main.cxx
+
+find lower_lmhlo_ops/main.cxx

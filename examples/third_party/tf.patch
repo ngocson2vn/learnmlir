@@ -1,33 +1,42 @@
 diff --git a/tensorflow/BUILD b/tensorflow/BUILD
-index 9d3fe6c6623..4fcb1f1fdbc 100644
+index 9d3fe6c6623..7221a4ebd2c 100644
 --- a/tensorflow/BUILD
 +++ b/tensorflow/BUILD
-@@ -104,7 +104,8 @@ PACKAGE_STATIC_DEPS = [
- 
- package(
-     # copybara:uncomment default_applicable_licenses = [":license"],
--    default_visibility = [":internal"],
-+    # default_visibility = [":internal"],
-+    default_visibility = ["//visibility:public"],
+@@ -1474,3 +1474,12 @@ py_library(
+     deps = ["//tensorflow/python:no_contrib"],
  )
- 
- # copybara:uncomment_begin
-diff --git a/tensorflow/compiler/mlir/BUILD b/tensorflow/compiler/mlir/BUILD
-index 42c78ff6143..30abee2eb75 100644
---- a/tensorflow/compiler/mlir/BUILD
-+++ b/tensorflow/compiler/mlir/BUILD
-@@ -102,10 +102,10 @@ cc_library(
- 
- cc_library(
-     name = "passes",
--    visibility = [
--        ":__subpackages__",
--        "//tensorflow/python:__subpackages__",
--    ],
-+    # visibility = [
-+    #     ":__subpackages__",
-+    #     "//tensorflow/python:__subpackages__",
-+    # ],
-     deps = [
-         "@llvm-project//mlir:AffineDialect",
-         "@llvm-project//mlir:QuantOps",
+ # copybara:comment_end
++
++# tensorflow_framework_bridge
++cc_library(
++  name = "tensorflow_framework_bridge",
++  deps = [
++    "@org_tensorflow//tensorflow:libtensorflow_framework_import_lib",
++  ],
++  visibility = ["//visibility:public"],
++)
+\ No newline at end of file
+diff --git a/tensorflow/compiler/xla/BUILD b/tensorflow/compiler/xla/BUILD
+index 202c642ccf5..c5c0ef71a53 100644
+--- a/tensorflow/compiler/xla/BUILD
++++ b/tensorflow/compiler/xla/BUILD
+@@ -1102,3 +1102,19 @@ cc_header_only_library(
+         "//tensorflow/core:stream_executor_headers_lib",
+     ],
+ )
++
++# tensorflow_xla_bridge
++cc_library(
++  name = "tensorflow_xla_bridge",
++  deps = [
++    "@org_tensorflow//tensorflow/compiler/xla:xla_proto_cc",
++    "@org_tensorflow//tensorflow/compiler/xla:xla_data_proto_cc",
++    "@org_tensorflow//tensorflow/compiler/xla:shape_util",
++    "@org_tensorflow//tensorflow/compiler/xla/service:hlo",
++    "@org_tensorflow//tensorflow/compiler/xla/stream_executor:stream_executor",
++    "@org_tensorflow//tensorflow/compiler/xla/stream_executor/lib:lib",
++    "@org_tensorflow//tensorflow/compiler/xla/service/gpu:gpu_asm_opts_util",
++    "@org_tensorflow//tensorflow/compiler/mlir/tools/kernel_gen/transforms:gpu_passes",  # fixdeps: keep
++  ],
++  visibility = ["//visibility:public"],
++)
