@@ -122,6 +122,7 @@
     "compare": "cpp",
     "concepts": "cpp",
     "ranges": "cpp",
-    "stop_token": "cpp"
+    "stop_token": "cpp",
+    "execution": "cpp"
   }
 }

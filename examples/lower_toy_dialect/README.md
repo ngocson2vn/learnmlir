@@ -4,6 +4,17 @@ This project demonstrates the MLIR lowering process:<br/>
 - Lower `toy.add` to `arith.addf`
 <br/>
 
+## Prerequisites
+Install clang-11 and lld-11
+```Bash
+sudo apt install clang-11
+sudo apt install lld-11
+
+sudo ln -sf /usr/lib/llvm-11/bin/clang /usr/bin/clang
+sudo ln -sf /usr/lib/llvm-11/bin/clang++ /usr/bin/clang++
+sudo ln -sf /usr/lib/llvm-11/bin/lld /usr/bin/lld
+```
+
 ## How to build
 ### Step 1: Build llvm-project
 ```Bash
