@@ -14,7 +14,7 @@ git checkout FETCH_HEAD
 
 rm -rf build
 mkdir -v build
-yes | cp -vf ../../docs/build.sh build/
+yes | cp -vf ../scripts/build.sh build/
 
 pushd build/
 ./build.sh

@@ -1,9 +1,9 @@
 #pragma once
 // #include "amd/include/Dialect/TritonAMDGPU/IR/Dialect.h"
 // #include "amd/include/TritonAMDGPUTransforms/Passes.h"
-#include "third_party/nvidia/include/Dialect/NVGPU/IR/Dialect.h"
-#include "third_party/nvidia/include/Dialect/NVWS/IR/Dialect.h"
-#include "third_party/proton/dialect/include/Dialect/Proton/IR/Dialect.h"
+#include "nvidia/include/Dialect/NVGPU/IR/Dialect.h"
+#include "nvidia/include/Dialect/NVWS/IR/Dialect.h"
+#include "proton/dialect/include/Dialect/Proton/IR/Dialect.h"
 #include "triton/Dialect/Gluon/Transforms/Passes.h"
 #include "triton/Dialect/Triton/IR/Dialect.h"
 #include "triton/Dialect/TritonGPU/IR/Dialect.h"

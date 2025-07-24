@@ -30,7 +30,7 @@ export CMAKE_PREFIX_PATH=${ROOT_DIR}/llvm-project/build/lib/cmake/:$CMAKE_PREFIX
 export UBSAN_LIBRARY_DIR=${ROOT_DIR}/llvm-project/build/lib/clang/16.0.0/lib/x86_64-unknown-linux-gnu
 
 cd ${ROOT_DIR}
-rm -rf build
+# rm -rf build
 mkdir -p build && cd build
 
 echo
@@ -44,3 +44,8 @@ echo "==================================================="
 echo "Run ninja build"
 echo "==================================================="
 cmake --build . -- -v
+
+
+cd ${ROOT_DIR}
+ln -sf ./build/bin/triton_compiler .
+echo "DONE"

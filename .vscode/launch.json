@@ -377,6 +377,51 @@
                 "text": "directory ${workspaceFolder}"
             }
         ]
+    },
+    {
+        "name": "triton-opt",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/study_triton_compiler/triton-opt",
+        "cwd": "${workspaceFolder}/study_triton_compiler",
+        "args": [
+            "./add_kernel.ttir"
+        ],
+        "stopAtEntry": true,
+        "environment": [
+            {
+                "name": "CUDA_VISIBLE_DEVICES",
+                "value": "0"
+            }
+        ],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "miDebuggerArgs": "-x '${workspaceFolder}/gdb.conf'",
+        // "linux": {
+        //     "sourceFileMap": {
+        //         "/proc/self/cwd": {
+        //             "editorPath": "${workspaceFolder}/examples/bazel-examples",
+        //             "useForBreakpoints": true
+        //         }
+        //     }
+        // },
+        "setupCommands": [
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Set Disassembly Flavor to Intel",
+                "text": "-gdb-set disassembly-flavor intel",
+                "ignoreFailures": true
+            },
+            {
+                "description": "",
+                //Configure the search path of the code file here, such as the path where the workspace can be configured in the blade project
+                "text": "directory ${workspaceFolder}"
+            }
+        ]
     }
   ]
 }

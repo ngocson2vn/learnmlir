@@ -5,10 +5,10 @@ gcc --version
 gcc (GCC) 12.5.0
 
 # sync triton code
-./sync.sh
+./scripts/sync.sh
 
 # llvm-project
-./llvm.sh
+./scripts/llvm.sh
 ```
 
 # Build
