@@ -26,8 +26,9 @@
                 "${workspaceFolder}/study_triton_compiler/lib",
                 "${workspaceFolder}/study_triton_compiler/bin",
                 "${workspaceFolder}/study_triton_compiler/third_party/**",
-                "${workspaceFolder}/study_triton_compiler/llvm-project/**",
-                "${workspaceFolder}/study_triton_compiler/build/include/**",
+                "${workspaceFolder}/study_triton_compiler/llvm-project/mlir/include",
+                "${workspaceFolder}/study_triton_compiler/llvm-project/llvm/include",
+                "${workspaceFolder}/study_triton_compiler/build/include",
                 "${workspaceFolder}/study_triton_compiler/build/third_party"
             ],
             "defines": [

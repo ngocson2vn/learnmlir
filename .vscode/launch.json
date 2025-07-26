@@ -379,10 +379,10 @@
         ]
     },
     {
-        "name": "triton-opt",
+        "name": "triton_compiler",
         "type": "cppdbg",
         "request": "launch",
-        "program": "${workspaceFolder}/study_triton_compiler/triton-opt",
+        "program": "${workspaceFolder}/study_triton_compiler/triton_compiler",
         "cwd": "${workspaceFolder}/study_triton_compiler",
         "args": [
             "./add_kernel.ttir"

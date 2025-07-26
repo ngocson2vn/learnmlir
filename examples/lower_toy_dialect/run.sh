@@ -2,5 +2,4 @@
 
 set -e
 
-cd build/
-./toy_lowering ../input.mlir
+build/toy_lowering ./input.mlir

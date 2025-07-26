@@ -13,8 +13,8 @@ struct ToyAddLowering : public OpConversionPattern<toy::AddOp> {
     toy::AddOp op, OpAdaptor adaptor,
       ConversionPatternRewriter &rewriter) const override {
     // Check that the input and output types are tensor<f64>
-    auto inputType = op.getLhs().getType().dyn_cast<TensorType>();
-    if (!inputType || !inputType.getElementType().isa<Float64Type>())
+    auto inputType = dyn_cast<TensorType>(op.getLhs().getType());
+    if (!inputType || !isa<Float64Type>(inputType.getElementType()))
       return failure();
 
     // Create arith.addf operation
