@@ -10,7 +10,7 @@ message(STATUS "LEARNMLIR_DIR: ${LEARNMLIR_DIR}")
 set(LLVM_BINARY_DIR "${LEARNMLIR_DIR}/llvm-project/build")
 add_subdirectory(${LEARNMLIR_DIR}/llvm-project/llvm ${LLVM_BINARY_DIR})
 
-# Generate operation definitions
+# LLVM and MLIR headers
 include_directories(${LEARNMLIR_DIR}/llvm-project/llvm/include)
 include_directories(${LEARNMLIR_DIR}/llvm-project/mlir/include)
 
