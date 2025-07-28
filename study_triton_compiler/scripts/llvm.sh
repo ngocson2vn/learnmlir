@@ -12,10 +12,10 @@ git remote add origin git@github.com:llvm/llvm-project.git
 git fetch origin --depth 1 ${llvm_hash}
 git checkout FETCH_HEAD
 
-rm -rf build
-mkdir -v build
-yes | cp -vf ../scripts/build.sh build/
+# rm -rf build
+# mkdir -v build
+# yes | cp -vf ../scripts/build.sh build/
 
-pushd build/
-./build.sh
-popd
+# pushd build/
+# ./build.sh
+# popd

@@ -4,48 +4,45 @@ set -e
 
 ROOT_DIR=$(pwd)
 echo "ROOT_DIR=${ROOT_DIR}"
+mkdir -p ${ROOT_DIR}/build
 
-#========================================================================
-# llvm-project
-#========================================================================
-# llvm_hash=$(cat ./cmake/llvm-hash.txt)
-# echo "llvm_hash=${llvm_hash}"
-# mkdir -p llvm-project
-# cd llvm-project
-# git init
-# git remote add origin git@github.com:llvm/llvm-project.git
-# git fetch origin --depth 1 ${llvm_hash}
-# git checkout FETCH_HEAD
+# git submodule update --init --recursive
 
-# rm -rf build
-# mkdir -v build
-# yes | cp -vf ../../docs/build.sh build/
 
-# pushd build/
-# ./build.sh
-# popd
-#========================================================================
+pre_hash=""
+if [ -f ${ROOT_DIR}/.cmake.sha256 ]; then
+  pre_hash=$(cat ${ROOT_DIR}/.cmake.sha256)
+fi
+now_hash=$(sha256sum ${ROOT_DIR}/CMakeLists.txt | awk '{print $1}')
 
-export CMAKE_PREFIX_PATH=${ROOT_DIR}/llvm-project/build/lib/cmake/:$CMAKE_PREFIX_PATH
-export UBSAN_LIBRARY_DIR=${ROOT_DIR}/llvm-project/build/lib/clang/16.0.0/lib/x86_64-unknown-linux-gnu
-
-cd ${ROOT_DIR}
-# rm -rf build
-mkdir -p build && cd build
-
-echo
-echo "==================================================="
-echo "Generate ninja build file"
-echo "==================================================="
-cmake -G Ninja -DTRITON_CODEGEN_BACKENDS=nvidia ..
+if [ "${now_hash}" != "${pre_hash}" ]; then
+  echo "${now_hash} != ${pre_hash}"
+  echo
+  echo "==================================================="
+  echo "Generate ninja build file"
+  echo "==================================================="
+  cd ${ROOT_DIR}/build
+  cmake -G Ninja -DTRITON_CODEGEN_BACKENDS=nvidia .. \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DLLVM_ENABLE_PROJECTS="mlir;compiler-rt" \
+    -DLLVM_BUILD_EXAMPLES=OFF \
+    -DLLVM_TARGETS_TO_BUILD="Native;X86;NVPTX;AMDGPU" \
+    -DLLVM_ENABLE_ASSERTIONS=ON \
+    -DCMAKE_C_COMPILER=clang \
+    -DCMAKE_CXX_COMPILER=clang++ \
+    -DLLVM_ENABLE_LLD=ON \
+    -DLLVM_CCACHE_BUILD=ON \
+    -DCOMPILER_RT_BUILD_GWP_ASAN=OFF \
+    -DLLVM_INCLUDE_TESTS=OFF \
+    -DCOMPILER_RT_BUILD_SANITIZERS=ON
+fi
 
 echo
 echo "==================================================="
 echo "Run ninja build"
 echo "==================================================="
-cmake --build . -- -v
+cd ${ROOT_DIR}/build
+cmake --build .
 
-
-cd ${ROOT_DIR}
-ln -sf ./build/bin/triton_compiler .
+yes | echo ${now_hash} > ${ROOT_DIR}/.cmake.sha256
 echo "DONE"

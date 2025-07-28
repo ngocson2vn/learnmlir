@@ -11,24 +11,27 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Compiler flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__STDC_FORMAT_MACROS -g -O0")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__STDC_FORMAT_MACROS")
 
 # #########
 # LLVM
 # #########
-if(NOT MLIR_DIR)
-  set(MLIR_DIR ${LLVM_LIBRARY_DIR}/cmake/mlir)
-endif()
+cmake_path(GET PROJECT_SOURCE_DIR PARENT_PATH LEARNMLIR_DIR)
+message(STATUS "LEARNMLIR_DIR: ${LEARNMLIR_DIR}")
 
-# MLIR
-find_package(MLIR REQUIRED CONFIG PATHS ${MLIR_DIR})
+set(LLVM_BINARY_DIR "${LEARNMLIR_DIR}/llvm-project/build")
+add_subdirectory(${LEARNMLIR_DIR}/llvm-project/llvm ${LLVM_BINARY_DIR})
+
+# LLVM and MLIR headers
+include_directories(${LEARNMLIR_DIR}/llvm-project/llvm/include)
+include_directories(${LEARNMLIR_DIR}/llvm-project/mlir/include)
+
+# Some headers are generated automatically, which is why we need to include the following directories
+include_directories(${LLVM_BINARY_DIR}/include)
+include_directories(${LLVM_BINARY_DIR}/tools/mlir/include)
 
 list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
-
-include(TableGen) # required by AddMLIR
-include(AddLLVM)
-include(AddMLIR)
 
 # Utilities
 function(add_triton_object name)
@@ -64,11 +67,7 @@ endfunction()
 
 
 # Disable warnings that show up in external code (gtest;pybind11)
-if(NOT MSVC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wno-covered-switch-default -fvisibility=hidden")
-else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4624 /wd4715 /wd4530")
-endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wno-covered-switch-default -fvisibility=hidden -fno-rtti -g -O0")
 
 include_directories(".")
 include_directories(${MLIR_INCLUDE_DIRS})

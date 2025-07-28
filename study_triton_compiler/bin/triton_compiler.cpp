@@ -12,6 +12,8 @@
 #include "mlir/Target/LLVMIR/LLVMTranslationInterface.h"
 #include "mlir/Target/LLVMIR/ModuleTranslation.h"
 #include "mlir/Target/LLVMIR/Dialect/NVVM/NVVMToLLVMIRTranslation.h"
+#include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
+#include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
 
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/SourceMgr.h"
@@ -44,7 +46,22 @@
 #include "triton/Tools/Sys/GetEnv.hpp"
 
 #include <string>
+#include <vector>
+#include <memory>
+#include <iostream>
 #include <unordered_set>
+#include <sstream>
+#include <array>
+#include <filesystem>
+#include <fstream>
+
+// C headers
+#include <cstdio>
+#include <cstring>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <errno.h>
 
 using namespace mlir;
 
@@ -242,11 +259,211 @@ void optimizeLLVMModule(llvm::Module *mod, const llvm::OptimizationLevel &opt,
   mpm.run(*mod, mam);
 }
 
+std::string translateLLVMIRToASM(llvm::Module &module,
+                                 const std::string &triple,
+                                 const std::string &proc,
+                                 const std::string &features,
+                                 const std::vector<std::string> &flags = {},
+                                 bool enable_fp_fusion = false,
+                                 bool isObject = false) {
+  using namespace mlir;
+  // options
+  auto options = llvm::cl::getRegisteredOptions();
+  for (std::string flag : flags) {
+    auto *shortPtr = static_cast<llvm::cl::opt<bool> *>(options[flag]);
+    assert(shortPtr);
+    shortPtr->setValue(true);
+  }
+  if (triton::tools::getBoolEnv("LLVM_IR_ENABLE_DUMP")) {
+    auto optIt = options.find("print-after-all");
+    if (optIt != options.end()) {
+      auto optPtr = static_cast<llvm::cl::opt<bool> *>(optIt->second);
+      *optPtr = true;
+    }
+  }
+  bool disableLLVMOpt = triton::tools::getBoolEnv("DISABLE_LLVM_OPT");
+  if (!disableLLVMOpt) {
+    // Check to see if we are passing a list of flags to disable optimizations.
+    auto flagList = triton::tools::getStrEnv("DISABLE_LLVM_OPT");
+    if (!flagList.empty()) {
+      llvm::SmallVector<StringRef, 3> split;
+      StringRef(flagList.c_str()).split(split, ',');
+      for (auto flag : split) {
+        auto optIt = options.find(flag);
+        if (optIt != options.end()) {
+          auto optPtr = static_cast<llvm::cl::opt<bool> *>(optIt->second);
+          *optPtr = true;
+        }
+      }
+    }
+  }
+
+  // inline everything
+  for (llvm::Function &f : module.functions())
+    if (!f.hasFnAttribute(llvm::Attribute::NoInline))
+      f.addFnAttr(llvm::Attribute::AlwaysInline);
+  // verify and store llvm
+  llvm::legacy::PassManager pm;
+  pm.add(llvm::createAlwaysInlinerLegacyPass());
+  pm.add(llvm::createVerifierPass());
+
+  const bool enabledTiming = triton::tools::getBoolEnv("LLVM_ENABLE_TIMING");
+  if (enabledTiming) {
+    llvm::TimePassesIsEnabled = true;
+    llvm::TimePassesPerRun = true;
+  }
+
+  pm.run(module);
+
+  SmallString<0> timePassesStr;
+  llvm::raw_svector_ostream reportStream(timePassesStr);
+
+  if (enabledTiming) {
+    reportAndResetTimings(&reportStream);
+    llvm::dbgs() << reportStream.str();
+    timePassesStr.clear();
+  }
+  // module->print(llvm::outs(), nullptr);
+
+  // create machine
+  module.setTargetTriple(llvm::Triple(triple));
+  auto machine = createTargetMachine(&module, proc, enable_fp_fusion, features);
+  // set data layout
+  module.setDataLayout(machine->createDataLayout());
+  // emit machine code
+  std::string result;
+  {
+    llvm::raw_string_ostream stream(result);
+    llvm::buffer_ostream pstream(stream);
+    llvm::legacy::PassManager pass;
+    // emit
+    auto fileType = isObject ? llvm::CodeGenFileType::ObjectFile
+                             : llvm::CodeGenFileType::AssemblyFile;
+    machine->addPassesToEmitFile(pass, pstream, nullptr, fileType);
+    pass.run(module);
+
+    if (enabledTiming) {
+      reportAndResetTimings(&reportStream);
+      llvm::dbgs() << reportStream.str();
+      timePassesStr.clear();
+    }
+  }
+  return result;
+}
+
+std::vector<std::string> splitStringBySpace(const std::string& str) {
+  std::vector<std::string> tokens;
+  std::stringstream ss(str); // Initialize stringstream with the input string
+  std::string token;
+
+  // Extract words (tokens) from the stringstream until no more words are found
+  while (ss >> token) { 
+    tokens.push_back(token); // Add the extracted token to the vector
+  }
+  return tokens;
+}
+
+void runCommand(const std::string& cmd, std::string& stdoutOutput, std::string& stderrOutput, bool& status) {
+  std::vector<std::string> parts = splitStringBySpace(cmd);
+  std::string prog = parts[0];
+  int numArgs = parts.size();
+  std::unique_ptr<char*> args_ptr(new char*[numArgs]);
+  char** argv = args_ptr.get();
+  for (int i = 0; i < numArgs - 1; i++) {
+    argv[i] = parts[i + 1].data();
+  }
+  argv[numArgs - 1] = nullptr;
+
+  std::cout << "prog: " << prog << std::endl;
+  for (int i = 0; i < numArgs - 1; i++) {
+    std::cout << "argv[" << i << "]: " << argv[i] << std::endl;
+  }
+
+  int stdoutPipe[2], stderrPipe[2];
+  if (pipe(stdoutPipe) == -1 || pipe(stderrPipe) == -1) {
+    status = false;
+    std::cerr << "[runCommand] Failed to open stdout/stderr pipe" << std::endl;
+    return;
+  }
+
+  pid_t pid = fork();
+  if (pid == -1) {
+    status = false;
+    std::cerr << "[runCommand] Failed to fork this program" << std::endl;
+    return;
+  }
+
+  // Child process
+  if (pid == 0) {
+    // Close read ends of pipes
+    close(stdoutPipe[0]);
+    close(stderrPipe[0]);
+
+    // Redirect stdout and stderr to respective pipes
+    dup2(stdoutPipe[1], STDOUT_FILENO);
+    dup2(stderrPipe[1], STDERR_FILENO);
+    close(stdoutPipe[1]);
+    close(stderrPipe[1]);
+
+    // Execute command
+    execvp(prog.c_str(), argv);
+
+    // execvp only returns if an error occurred
+    fprintf(stderr, "[runCommand] execvp %s: %s\n", prog.c_str(), strerror(errno));
+    exit(EXIT_FAILURE); // Child process exits
+  }
+
+  // Parent process
+  else {
+    // Close write ends of pipes
+    close(stdoutPipe[1]);
+    close(stderrPipe[1]);
+
+    // Read from pipes
+    std::array<char, 128> buffer;
+    ssize_t bytesRead;
+
+    // Read stdout
+    while ((bytesRead = read(stdoutPipe[0], buffer.data(), buffer.size() - 1)) > 0) {
+      buffer[bytesRead] = '\0';
+      stdoutOutput += buffer.data();
+    }
+    close(stdoutPipe[0]);
+
+    // Read stderr
+    while ((bytesRead = read(stderrPipe[0], buffer.data(), buffer.size() - 1)) > 0) {
+      buffer[bytesRead] = '\0';
+      stderrOutput += buffer.data();
+    }
+    close(stderrPipe[0]);
+
+    // Wait for child to finish
+    int ret;
+    waitpid(pid, &ret, 0);
+    status = (WEXITSTATUS(ret) == 0);
+  }
+}
+
+std::string genTempFile() {
+  // Get current time as a time_point
+  auto now = std::chrono::system_clock::now();
+  
+  // Convert to epoch time in seconds
+  auto epoch_time = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+  std::string tempName = std::string("triton_temp.").append(std::to_string(epoch_time));
+  std::filesystem::path tempPath = std::filesystem::temp_directory_path() / tempName;
+  return tempPath.string();
+}
+
+
 int main(int argc, char **argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv, "Triton compiler\n");
 
   mlir::DialectRegistry registry;
   registerTritonDialects(registry);
+  mlir::registerNVVMDialectTranslation(registry);
+  mlir::registerBuiltinDialectTranslation(registry);
+  mlir::registerLLVMDialectTranslation(registry);
 
   MLIRContext context(registry);
 
@@ -270,9 +487,9 @@ int main(int argc, char **argv) {
   // Set up the pass manager
   PassManager pm(&context);
 
-  // 
+  //===========================================================================
   // make_ttgir
-  // 
+  //===========================================================================
   int capability = 86;
   std::string targetStr = std::string("cuda:").append(std::to_string(capability));
   pm.addPass(mlir::triton::createConvertTritonToTritonGPU({targetStr, 4, 32, 1}));
@@ -336,9 +553,9 @@ int main(int argc, char **argv) {
   pm.addPass(mlir::createCanonicalizerPass());
   
   
-  // 
+  //===========================================================================
   // make_llir
-  //
+  //===========================================================================
   int ptxVersion = 128;
   pm.addPass(mlir::triton::gpu::createTritonGPUCombineTensorSelectAndIf());
   pm.addPass(mlir::triton::gpu::createTritonGPUAllocateWarpGroups());
@@ -437,8 +654,56 @@ int main(int argc, char **argv) {
 
   optimizeLLVMModule(llvmMod.get(), llvm::OptimizationLevel::O3);
 
-  llvm::outs() << "LLVMIR:\n";
+  llvm::outs() << "\n";
+  llvm::outs() << "=================================================\n";
+  llvm::outs() << "LLVM IR\n";
+  llvm::outs() << "=================================================\n";
   llvm::outs() << *llvmMod << "\n";
+
+  //===========================================================================
+  // make_ptx
+  //===========================================================================
+  std::string ptx = translateLLVMIRToASM(*llvmMod, triple, arch, features);
+
+  llvm::outs() << "\n";
+  llvm::outs() << "=================================================\n";
+  llvm::outs() << "PTX\n";
+  llvm::outs() << "=================================================\n";
+  llvm::outs() << ptx << "\n";
+
+  //===========================================================================
+  // make_cubin
+  //===========================================================================
+  std::filesystem::path currentPath = std::filesystem::current_path();
+  std::string ptxasPath = currentPath.string() + "/third_party/nvidia/backend/bin/ptxas";
+  std::string outputPtxFile = currentPath.string() + "/output.ptx";
+  std::string outputCubinFile = currentPath.string() + "/output.cubin";
+  std::ofstream ptxOs(outputPtxFile, std::ios::out | std::ios::binary);
+  if (ptxOs.is_open()) {
+    ptxOs.write(ptx.data(), ptx.size());
+    ptxOs.flush();
+    ptxOs.close();
+  } else {
+    std::cerr << "Failed to create a temporary file for ptx" << std::endl;
+    return 1;
+  }
+
+  std::string cmd = ptxasPath
+                    + std::string(" -lineinfo -suppress-debug-info")
+                    + std::string(" --fmad=false -v")
+                    + std::string(" --gpu-name=") + arch
+                    + std::string(" -o ") + outputCubinFile
+                    + std::string(" ") + outputPtxFile;
+  std::string stdoutOutput, stderrOutput;
+  bool ok;
+  runCommand(cmd, stdoutOutput, stderrOutput, ok);
+  if (ok) {
+    std::cout << "\ncubin: " << outputCubinFile << std::endl;
+  } else {
+    std::cerr << "ptxas failed\n\n";
+    std::cerr << "stderr:\n" << stderrOutput << std::endl;
+    return 1;
+  }
 
   return 0;
 }

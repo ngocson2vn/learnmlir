@@ -9,6 +9,10 @@ gcc (GCC) 12.5.0
 
 # llvm-project
 ./scripts/llvm.sh
+
+# lldb-dap
+cd /usr/bin/
+sudo ln -sf ../lib/llvm-17/bin/lldb-vscode ./lldb-dap
 ```
 
 # Build
