@@ -46,9 +46,13 @@ do { \
   } \
 } while (0)
 
-class CuCtxKeeper {
+class CuCtxKeeper final {
  public:
   CuCtxKeeper() = default;
+  CuCtxKeeper(const CuCtxKeeper& rhs) = delete;
+  CuCtxKeeper& operator=(const CuCtxKeeper& rhs) = delete;
+  CuCtxKeeper(CuCtxKeeper&& rhs) = delete;
+  CuCtxKeeper& operator=(CuCtxKeeper&& rhs) = delete;
 
   ~CuCtxKeeper() {
     if (ctx_) {
@@ -71,21 +75,29 @@ class CuCtxKeeper {
 
 class DevicePtr {
  public:
+  // Forbid default constructor
+  DevicePtr() = delete;
+
+  // Allow custom constructor
   DevicePtr(CUdeviceptr ptr) : ptr_(ptr) {
     fprintf(stdout, "Allocated device ptr %llu\n", ptr_);
   }
 
+  // Forbid copy constructor
+  DevicePtr(const DevicePtr& rhs) = delete;
+
+  // Forbid copy assignment operator
+  DevicePtr& operator=(const DevicePtr& rhs) = delete;
+
+  // Allow move constructor
   DevicePtr(DevicePtr&& rhs) noexcept {
     ptr_ = rhs.ptr_;
     rhs.ptr_ = 0;
     fprintf(stdout, "DevicePtr move ctor ptr %llu\n", ptr_);
   }
 
-  DevicePtr& operator=(DevicePtr&& rhs) noexcept {
-    ptr_ = rhs.ptr_;
-    rhs.ptr_ = 0;
-    return *this;
-  }
+  // Forbid move assignment operator
+  DevicePtr& operator=(DevicePtr&& rhs) = delete;
 
   ~DevicePtr() {
     if (ptr_) {
@@ -132,10 +144,10 @@ class CubinLoader {
       cuGetErrorString(res, &errMsg);
       fprintf(stderr, __FILE__ ":" TO_STR(__LINE__) " CUDA Error: %s\n", errMsg);
       isLoaded_ = false;
+    } else {
+      isLoaded_ = true;
+      fprintf(stdout, "Successfully loaded cubin %s\n", cubinFile_.c_str());
     }
-
-    isLoaded_ = true;
-    fprintf(stdout, "Successfully loaded cubin %s\n", cubinFile_.c_str());
   }
 
   ~CubinLoader() {
@@ -175,18 +187,36 @@ class CubinLoader {
   bool isLoaded_;
 };
 
-struct CudaInitializer {
-  static CUcontext init() {
-    // Initialize CUDA
-    CUcontext context = nullptr;
-    CUdevice device;
+class CudaInitializer {
+ public:
+  CudaInitializer() {
+    CUcontext context = init();
+    if (!context) {
+      fprintf(stderr, "Failed to init CUDA!!!\n");
+      std::terminate();
+    }
+
+    ctxKeeper_.setContext(context);
+    fprintf(stdout, "Successfully initialized CUDA!\n");
+  }
+
+  CUcontext init() {
     CUDA_CHECK_RET_NULL(cuInit(0));
+
+    CUdevice device;
     CUDA_CHECK_RET_NULL(cuDeviceGet(&device, 0));
+
+    CUcontext context;
     CUDA_CHECK_RET_NULL(cuCtxCreate(&context, 0, device));
 
     return context;
   }
+
+ private:
+  CuCtxKeeper ctxKeeper_;
 };
+
+static CudaInitializer _cudaInit;
 
 class CubinLauncher {
  public:
@@ -224,7 +254,11 @@ class CubinLauncher {
     }
 
     // Build kernel args
-    void** kernelArgs = new void*[inputs.size() + outputs.size() + 2];
+    // NOTE: MUST keep devInputs and devOutputs unchanged from now on.
+    // Otherwise, device pointers may be moved to different locations which leads to 
+    // undefined bahavior.
+    std::unique_ptr<void*> kernelArgsPtr(new void*[inputs.size() + outputs.size() + 2]);
+    void** kernelArgs = kernelArgsPtr.get();
     unsigned argIdx = 0;
     for (int i = 0; i < inputs.size(); i++) {
       kernelArgs[argIdx++] = &devInputs[i].get();
@@ -246,6 +280,7 @@ class CubinLauncher {
     // Launch the kernel
     CUDA_CHECK_RET_FALSE(cuLaunchKernel(kernelFunc, gridDim.x, 1, 1, blockDim.x, 1, 1, 0, NULL, kernelArgs, NULL));
 
+    // Wait until the kernel launch is done
     CUDA_CHECK_RET_FALSE(cuCtxSynchronize());
 
     // Copy results back to host
@@ -267,8 +302,6 @@ int main(int argc, char** argv) {
     printf("Usage: %s /path/to/file.cubin KERNEL_NAME BLOCK_SIZE\n", argv[0]);
     return EXIT_FAILURE;
   }
-
-  CuCtxKeeper ctxKeeper;
 
   // Parse arguments
   std::string cubinFile = argv[1];
@@ -318,22 +351,7 @@ int main(int argc, char** argv) {
   outputs.push_back(h_output);
   outputSizes.push_back(numElements * sizeof(float));
 
-
-  //
-  // An uniform runner APIs
-  //
-
-  // Init CUDA
-  CUcontext context = CudaInitializer::init();
-  if (!context) {
-    fprintf(stderr, "Failed to init CUDA!!!\n");
-    return EXIT_FAILURE;
-  }
-
-  ctxKeeper.setContext(context);
-  fprintf(stdout, "Successfully initialized CUDA!\n");
-
-  // Launch kernel
+  // An uniform runner API
   CubinLauncher cuLauncher(cubinFile);
   bool ok = cuLauncher.launch(kernelName, inputs, inputSizes, outputs, outputSizes, numElements, blockSize);
   if (!ok) {
