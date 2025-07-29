@@ -222,7 +222,7 @@ class CubinLauncher {
  public:
   CubinLauncher(const std::string& cubinFile) : cubin_(cubinFile) {}
 
-  bool launch(
+  bool launchKernel(
     const std::string& kernelName,
     const std::vector<void*>& inputs,
     const std::vector<std::size_t>& inputSizes,
@@ -352,8 +352,8 @@ int main(int argc, char** argv) {
   outputSizes.push_back(numElements * sizeof(float));
 
   // An uniform runner API
-  CubinLauncher cuLauncher(cubinFile);
-  bool ok = cuLauncher.launch(kernelName, inputs, inputSizes, outputs, outputSizes, numElements, blockSize);
+  CubinLauncher launcher(cubinFile);
+  bool ok = launcher.launchKernel(kernelName, inputs, inputSizes, outputs, outputSizes, numElements, blockSize);
   if (!ok) {
     return EXIT_FAILURE;
   }
