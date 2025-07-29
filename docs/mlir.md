@@ -410,6 +410,10 @@ static void diagnoseInvalidOperandDominance(Operation &op, unsigned operandNo) {
                             << op;
 ```
 
+## error: cannot be converted to LLVM IR: missing `LLVMTranslationDialectInterface` registration for dialect for op: builtin.module
+
+
+
 # Location to string
 ```C++
 static std::string locationToString(mlir::Location loc) {

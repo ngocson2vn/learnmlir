@@ -1,6 +1,7 @@
 [submodule "llvm-project"]
 	path = llvm-project
 	url = https://github.com/llvm/llvm-project.git
+	shallow = true
 [submodule "toy/third_party/tensorflow"]
 	path = toy/third_party/tensorflow
 	url = https://github.com/tensorflow/tensorflow.git

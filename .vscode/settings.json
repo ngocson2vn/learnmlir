@@ -123,6 +123,12 @@
     "concepts": "cpp",
     "ranges": "cpp",
     "stop_token": "cpp",
-    "execution": "cpp"
+    "execution": "cpp",
+    "sim_map": "cpp",
+    "sim_set": "cpp",
+    "sim_unordered_map": "cpp",
+    "sim_unordered_set": "cpp",
+    "sim_vector": "cpp",
+    "*.mlir": "mlir"
   }
 }

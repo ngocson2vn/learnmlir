@@ -3,6 +3,7 @@
         {
             "name": "Linux",
             "includePath": [
+                "/usr/local/cuda-12.4/include",
                 // "${workspaceFolder}/toy/Ch2/include",
                 // "${workspaceFolder}/toy/bazel-toy/pass1/include",
                 // "${workspaceFolder}/toy/bazel-toy/external/org_tensorflow",
@@ -10,13 +11,13 @@
                 // "${workspaceFolder}/toy/bazel-toy/external/eigen_archive",
                 // "${workspaceFolder}/toy/bazel-toy/external/com_google_protobuf/src",
                 // "${workspaceFolder}/toy/bazel-toy/bazel-out/k8-dbg/bin/external/org_tensorflow",
-                // "${workspaceFolder}/examples/bazel-examples/external/org_tensorflow",
+                // "${workspaceFolder}/bazel-external/org_tensorflow",
                 // "${workspaceFolder}/llvm-project/llvm/include",
                 // "${workspaceFolder}/llvm-project/mlir/include",
                 // "${workspaceFolder}/llvm-project/build/include",
                 // "${workspaceFolder}/llvm-project/build/tools/mlir/include",
-                // "${workspaceFolder}/examples/lower_toy_dialect",
-                // "${workspaceFolder}/examples/lower_toy_dialect/build",
+                // "${workspaceFolder}/lower_toy_dialect",
+                // "${workspaceFolder}/lower_toy_dialect/build",
                 // "${workspaceFolder}/study_disc_passes/**",
                 // "${workspaceFolder}/study_disc_passes/bazel-out/k8-dbg/bin/mlir/disc/transforms",
                 // "${workspaceFolder}/study_disc_passes/bazel-out/k8-dbg/bin/external/org_tensorflow/tensorflow",
@@ -26,10 +27,13 @@
                 "${workspaceFolder}/study_triton_compiler/lib",
                 "${workspaceFolder}/study_triton_compiler/bin",
                 "${workspaceFolder}/study_triton_compiler/third_party/**",
-                "${workspaceFolder}/study_triton_compiler/llvm-project/mlir/include",
-                "${workspaceFolder}/study_triton_compiler/llvm-project/llvm/include",
                 "${workspaceFolder}/study_triton_compiler/build/include",
-                "${workspaceFolder}/study_triton_compiler/build/third_party"
+                "${workspaceFolder}/study_triton_compiler/build/third_party",
+                "${workspaceFolder}/llvm-project/mlir/include",
+                "${workspaceFolder}/llvm-project/llvm/include",
+                "${workspaceFolder}/llvm-project/mlir/include",
+                "${workspaceFolder}/llvm-project/build/include",
+                "${workspaceFolder}/llvm-project/build/tools/mlir/include"
             ],
             "defines": [
                 "GOOGLE_CUDA",
