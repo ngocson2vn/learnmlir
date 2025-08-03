@@ -379,30 +379,15 @@
         ]
     },
     {
-        "name": "triton_compiler",
+        "name": "lower_builtin_llvmir",
         "type": "lldb-dap",
         "request": "launch",
-        "program": "${workspaceFolder}/study_triton_compiler/build/bin/triton_compiler",
-        "cwd": "${workspaceFolder}/study_triton_compiler",
-        "args": [
-            "./add_kernel.ttir"
-        ],
+        "program": "${workspaceFolder}/examples/lower_builtin_llvmir/build/main",
+        "cwd": "${workspaceFolder}/examples",
+        "args": [],
         "env": {
             "CUDA_VISIBLE_DEVICES": "0"
         }
-    },
-    {
-        "name": "runner",
-        "type": "lldb-dap",
-        "request": "launch",
-        "program": "${workspaceFolder}/study_triton_compiler/build/bin/runner",
-        "cwd": "${workspaceFolder}/study_triton_compiler",
-        "args": [
-            "/data00/home/son.nguyen/workspace/learnmlir/study_triton_compiler/output.cubin",
-            "add_kernel",
-            "64"
-        ],
-        "env": {}
     }
   ]
 }

@@ -24,6 +24,7 @@ if [ "${now_hash}" != "${pre_hash}" ]; then
   yes | echo ${now_hash} > ./.cmake.sha256
   cd ${ROOT_DIR}/build
   cmake -G Ninja .. \
+    -DCMAKE_CXX_FLAGS="-g -O0" \
     -DCMAKE_BUILD_TYPE=Debug \
     -DLLVM_ENABLE_PROJECTS="mlir;compiler-rt" \
     -DLLVM_BUILD_EXAMPLES=OFF \
