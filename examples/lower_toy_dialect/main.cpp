@@ -12,8 +12,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "toy_dialect.h"
-
-#include "toy_to_arith_lowering.h"
+#include "toy_passes.h"
 
 using namespace mlir;
 
@@ -48,9 +47,13 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  llvm::outs() << "Before lowering:\n";
+  module->print(llvm::outs());
+  llvm::outs() << "\n";
+
   // Set up the pass manager
   PassManager pm(&context);
-  pm.addPass(std::make_unique<ConvertToyToArith>());
+  pm.addPass(mlir::toy::createConvertToyToArith());
 
   // Apply the pass
   if (failed(pm.run(module.get()))) {

@@ -18,32 +18,41 @@ include_directories(${LEARNMLIR_DIR}/llvm-project/mlir/include)
 include_directories(${LLVM_BINARY_DIR}/include)
 include_directories(${LLVM_BINARY_DIR}/tools/mlir/include)
 
-# Generate operation definitions
-include_directories(${PARENT_DIR}/llvm-project/llvm/include)
-include_directories(${PARENT_DIR}/llvm-project/mlir/include)
-set(LLVM_TARGET_DEFINITIONS toy_ops.td)
-mlir_tablegen(toy_ops.h.inc -gen-op-decls)
-mlir_tablegen(toy_ops.cpp.inc -gen-op-defs)
-
 message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
+# Generate operation definitions
+set(LLVM_TARGET_DEFINITIONS toy_ops.td)
+mlir_tablegen(toy_dialect.h.inc -gen-dialect-decls)
+mlir_tablegen(toy_dialect.cpp.inc -gen-dialect-defs)
+mlir_tablegen(toy_ops.h.inc -gen-op-decls)
+mlir_tablegen(toy_ops.cpp.inc -gen-op-defs)
+add_public_tablegen_target(ToyOpsIncGen)
+
 add_library(toy_dialect 
   toy_dialect.cpp 
-  ${CMAKE_CURRENT_BINARY_DIR}/toy_ops.h.inc
-  ${CMAKE_CURRENT_BINARY_DIR}/toy_ops.cpp.inc
 )
-add_dependencies(toy_dialect MLIRTableGen MLIRIR MLIRDialect)
+add_dependencies(toy_dialect ToyOpsIncGen)
 target_compile_options(toy_dialect PRIVATE -fno-rtti -g -O0)
+
+# Generate operation definitions
+set(LLVM_TARGET_DEFINITIONS toy_passes.td)
+mlir_tablegen(toy_passes.h.inc -gen-pass-decls)
+add_public_tablegen_target(ToyConversionPassIncGen)
+
+add_library(toy_passes 
+  toy_passes.cpp
+)
+add_dependencies(toy_passes ToyConversionPassIncGen)
+target_compile_options(toy_passes PRIVATE -fno-rtti -g -O0)
 
 add_executable(toy_lowering 
   main.cpp
 )
 target_compile_options(toy_lowering PRIVATE -fno-rtti -g -O0)
-add_dependencies(toy_dialect MLIRTableGen MLIRIR MLIRDialect)
-
 target_link_libraries(toy_lowering PRIVATE
   toy_dialect
+  toy_passes
   MLIRIR
   MLIRDialect
   MLIRFuncDialect
