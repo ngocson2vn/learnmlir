@@ -169,6 +169,7 @@ llvm-project/mlir/include/mlir/IR/Block.h
 ```
 
 # Debug
+-debug
 --mlir-print-debuginfo
 ```C++
 // main.cc
