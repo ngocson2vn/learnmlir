@@ -2,4 +2,4 @@
 
 set -e
 
-build/toy_lowering ./input.mlir
+build/main ./input.mlir -debug

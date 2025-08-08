@@ -6,7 +6,10 @@
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Parser/Parser.h"
 #include "mlir/Pass/PassManager.h"
+#include "mlir/Transforms/Passes.h"
 #include "mlir/Support/FileUtilities.h"
+
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_ostream.h"
@@ -28,6 +31,9 @@ int main(int argc, char **argv) {
   context.getOrLoadDialect<toy::ToyDialect>();
   context.getOrLoadDialect<func::FuncDialect>();
   context.getOrLoadDialect<arith::ArithDialect>();
+  context.getOrLoadDialect<memref::MemRefDialect>();
+  context.getOrLoadDialect<bufferization::BufferizationDialect>();
+  context.getOrLoadDialect<linalg::LinalgDialect>();
 
   // Load the input MLIR file
   llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileOrErr =
@@ -49,11 +55,13 @@ int main(int argc, char **argv) {
 
   llvm::outs() << "Before lowering:\n";
   module->print(llvm::outs());
-  llvm::outs() << "\n";
+  llvm::outs() << "\n\n";
 
   // Set up the pass manager
   PassManager pm(&context);
   pm.addPass(mlir::toy::createConvertToyToArith());
+  pm.addPass(mlir::toy::createConvertTensorToMemRef());
+  // pm.addPass(mlir::createCanonicalizerPass());
 
   // Apply the pass
   if (failed(pm.run(module.get()))) {
@@ -62,7 +70,7 @@ int main(int argc, char **argv) {
   }
 
   // Print the resulting module
-  llvm::outs() << "Lowered MLIR:\n";
+  llvm::outs() << "\nLowered MLIR:\n";
   module->print(llvm::outs());
   return 0;
 }

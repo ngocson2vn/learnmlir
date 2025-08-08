@@ -9,3 +9,12 @@ def ConvertToyToArith: Pass<"convert-toy-to-arith", "mlir::ModuleOp"> {
     let dependentDialects = ["mlir::arith::ArithDialect",
                              "mlir::toy::ToyDialect"];
 }
+
+def ConvertTensorToMemRef: Pass<"convert-tensor-to-memref", "mlir::ModuleOp"> {
+    let summary = "Convert Tensor to MemRef";
+    let description = [{
+      This pass converts the Tensor type into the MemRef type.
+    }];
+
+    let dependentDialects = ["mlir::arith::ArithDialect"];
+}

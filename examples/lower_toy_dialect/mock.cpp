@@ -1,0 +1,3 @@
+struct Mock {
+  bool ok;
+};

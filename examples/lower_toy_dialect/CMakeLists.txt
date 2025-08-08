@@ -42,21 +42,23 @@ add_public_tablegen_target(ToyConversionPassIncGen)
 
 add_library(toy_passes 
   toy_passes.cpp
+  # mock.cpp
 )
 add_dependencies(toy_passes ToyConversionPassIncGen)
 target_compile_options(toy_passes PRIVATE -fno-rtti -g -O0)
 
-add_executable(toy_lowering 
+add_executable(main 
   main.cpp
 )
-target_compile_options(toy_lowering PRIVATE -fno-rtti -g -O0)
-target_link_libraries(toy_lowering PRIVATE
+target_compile_options(main PRIVATE -fno-rtti -g -O0)
+target_link_libraries(main PRIVATE
   toy_dialect
   toy_passes
   MLIRIR
   MLIRDialect
   MLIRFuncDialect
   MLIRArithDialect
+  MLIRLinalgDialect
   MLIRPass
   MLIRTransforms
   MLIRTransformUtils
