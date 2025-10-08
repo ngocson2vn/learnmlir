@@ -340,6 +340,7 @@
         "name": "lower_toy_dialect",
         "type": "lldb-dap",
         "request": "launch",
+        "console": "integratedTerminal",
         "program": "${workspaceFolder}/examples/lower_toy_dialect/build/main",
         "cwd": "${workspaceFolder}/examples/lower_toy_dialect",
         "args": [

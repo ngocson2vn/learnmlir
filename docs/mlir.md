@@ -300,7 +300,7 @@ struct LayerNormConvert : public OpRewritePattern<func::FuncOp>,
 ## Dump IRs
 ```C++
 #include "llvm/Support/ToolOutputFile.h"
-#include "mlir/Support/FileUtilities.h"  // from @llvm-project
+#include "mlir/Support/FileUtilities.h"
 
   std::string errorMessage;
 
@@ -547,4 +547,92 @@ protected:
     return concrete->getOperation();
   }
 };
+```
+<br/>
+
+# Dialect Conversion
+https://mlir.llvm.org/docs/DialectConversion/
+<br/>
+
+Example: [lower_toy_dialect](../examples/lower_toy_dialect/)
+```C++
+// applyPartialConversion -> 
+// llvm-project/mlir/lib/Transforms/Utils/DialectConversion.cpp
+LogicalResult mlir::applyPartialConversion(
+    ArrayRef<Operation *> ops, const ConversionTarget &target,
+    const FrozenRewritePatternSet &patterns, ConversionConfig config) {
+  OperationConverter opConverter(target, patterns, config,
+                                 OpConversionMode::Partial);
+  return opConverter.convertOperations(ops);
+}
+
+
+// opConverter
+struct OperationConverter {
+  explicit OperationConverter(const ConversionTarget &target,
+                              const FrozenRewritePatternSet &patterns,
+                              const ConversionConfig &config,
+                              OpConversionMode mode)
+      : config(config), opLegalizer(target, patterns, this->config),
+        mode(mode) {}
+
+private:
+  /// The legalizer to use when converting operations.
+  OperationLegalizer opLegalizer;
+}
+
+
+// opConverter.convertOperations(ops)
+LogicalResult OperationConverter::convertOperations(ArrayRef<Operation *> ops) {
+  const ConversionTarget &target = opLegalizer.getTarget();
+
+  // Compute the set of operations and blocks to convert.
+  SmallVector<Operation *> toConvert;
+  for (auto *op : ops) {
+    op->walk<WalkOrder::PreOrder, ForwardDominanceIterator<>>(
+        [&](Operation *op) {
+          toConvert.push_back(op);
+          // Don't check this operation's children for conversion if the
+          // operation is recursively legal.
+          auto legalityInfo = target.isLegal(op);
+          if (legalityInfo && legalityInfo->isRecursivelyLegal)
+            return WalkResult::skip();
+          return WalkResult::advance();
+        });
+  }
+}
+```
+
+## ConversionTarget
+```C++
+// ConversionTarget::isLegal
+auto ConversionTarget::isLegal(Operation *op) const
+    -> std::optional<LegalOpDetails> {
+  std::optional<LegalizationInfo> info = getOpInfo(op->getName());
+}
+
+// legalOperations and legalDialects
+// They are updated by client code
+auto ConversionTarget::getOpInfo(OperationName op) const
+    -> std::optional<LegalizationInfo> {
+  // Check for info for this specific operation.
+  const auto *it = legalOperations.find(op);
+  if (it != legalOperations.end())
+    return it->second;
+  // Check for info for the parent dialect.
+  auto dialectIt = legalDialects.find(op.getDialectNamespace());
+  if (dialectIt != legalDialects.end()) {
+    DynamicLegalityCallbackFn callback;
+    auto dialectFn = dialectLegalityFns.find(op.getDialectNamespace());
+    if (dialectFn != dialectLegalityFns.end())
+      callback = dialectFn->second;
+    return LegalizationInfo{dialectIt->second, /*isRecursivelyLegal=*/false,
+                            callback};
+  }
+  // Otherwise, check if we mark unknown operations as dynamic.
+  if (unknownLegalityFn)
+    return LegalizationInfo{LegalizationAction::Dynamic,
+                            /*isRecursivelyLegal=*/false, unknownLegalityFn};
+  return std::nullopt;
+}
 ```
