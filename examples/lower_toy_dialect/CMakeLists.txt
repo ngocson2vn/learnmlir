@@ -44,7 +44,21 @@ add_library(toy_passes
   toy_passes.cpp
   # mock.cpp
 )
-add_dependencies(toy_passes ToyConversionPassIncGen)
+add_dependencies(toy_passes 
+  ToyConversionPassIncGen
+  MLIRIR
+  MLIRDialect
+  MLIRFuncDialect
+  MLIRArithDialect
+  MLIRLinalgDialect
+  MLIRPass
+  MLIRTransforms
+  MLIRTransformUtils
+  MLIRParser
+  MLIRSupport
+  MLIRTableGen
+  clang_rt.ubsan_standalone-x86_64
+)
 target_compile_options(toy_passes PRIVATE -fno-rtti -g -O0)
 
 add_executable(main 

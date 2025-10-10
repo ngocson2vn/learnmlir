@@ -6,9 +6,6 @@ ROOT_DIR=$(pwd)
 echo "ROOT_DIR=${ROOT_DIR}"
 mkdir -p ${ROOT_DIR}/build
 
-git submodule update --init --recursive
-
-
 pre_hash=""
 if [ -f ./.cmake.sha256 ]; then
   pre_hash=$(cat ./.cmake.sha256)
@@ -21,7 +18,6 @@ if [ "${now_hash}" != "${pre_hash}" ]; then
   echo "==================================================="
   echo "Generate ninja build file"
   echo "==================================================="
-  yes | echo ${now_hash} > ./.cmake.sha256
   cd ${ROOT_DIR}/build
   cmake -G Ninja .. \
     -DCMAKE_BUILD_TYPE=Debug \
@@ -36,6 +32,11 @@ if [ "${now_hash}" != "${pre_hash}" ]; then
     -DCOMPILER_RT_BUILD_GWP_ASAN=OFF \
     -DLLVM_INCLUDE_TESTS=OFF \
     -DCOMPILER_RT_BUILD_SANITIZERS=ON
+
+  cmake --build .
+
+  cd ${ROOT_DIR}/
+  yes | echo ${now_hash} > ./.cmake.sha256
 fi
 
 echo

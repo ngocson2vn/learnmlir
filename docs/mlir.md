@@ -609,6 +609,21 @@ LogicalResult OperationConverter::convertOperations(ArrayRef<Operation *> ops) {
 auto ConversionTarget::isLegal(Operation *op) const
     -> std::optional<LegalOpDetails> {
   std::optional<LegalizationInfo> info = getOpInfo(op->getName());
+
+  // Returns true if this operation instance is known to be legal.
+  auto isOpLegal = [&] {
+    // Handle dynamic legality either with the provided legality function.
+    if (info->action == LegalizationAction::Dynamic) {
+      std::optional<bool> result = info->legalityFn(op);
+      if (result)
+        return *result;
+    }
+
+    // Otherwise, the operation is only legal if it was marked 'Legal'.
+    return info->action == LegalizationAction::Legal;
+  };
+  if (!isOpLegal())
+    return std::nullopt;
 }
 
 // legalOperations and legalDialects
@@ -634,5 +649,137 @@ auto ConversionTarget::getOpInfo(OperationName op) const
     return LegalizationInfo{LegalizationAction::Dynamic,
                             /*isRecursivelyLegal=*/false, unknownLegalityFn};
   return std::nullopt;
+}
+```
+
+## TypeConverter
+Provide hooks for converting types
+
+
+## Main Conversion Loop
+```C++
+LogicalResult OperationConverter::convertOperations(ArrayRef<Operation *> ops) {
+  // Convert each operation and discard rewrites on failure.
+  ConversionPatternRewriter rewriter(ops.front()->getContext(), config);
+  ConversionPatternRewriterImpl &rewriterImpl = rewriter.getImpl();
+
+  for (auto *op : toConvert) {
+    if (failed(convert(rewriter, op))) {
+      // Dialect conversion failed.
+      if (rewriterImpl.config.allowPatternRollback) {
+        // Rollback is allowed: restore the original IR.
+        rewriterImpl.undoRewrites();
+      } else {
+        // Rollback is not allowed: apply all modifications that have been
+        // performed so far.
+        rewriterImpl.applyRewrites();
+      }
+      return failure();
+    }
+  }
+
+  // After a successful conversion, apply rewrites.
+  rewriterImpl.applyRewrites();
+}
+```
+
+### Core Conversion Logic:
+```C++
+// llvm-project/mlir/lib/Transforms/Utils/DialectConversion.cpp
+LogicalResult
+OperationLegalizer::legalizeWithPattern(Operation *op,
+                                        ConversionPatternRewriter &rewriter) {
+  // Functor that performs additional legalization when a pattern is
+  // successfully applied.
+  auto onSuccess = [&](const Pattern &pattern) {
+    assert(rewriterImpl.pendingRootUpdates.empty() && "dangling root updates");
+    auto result = legalizePatternResult(op, pattern, rewriter, curState);
+    appliedPatterns.erase(&pattern);
+    if (failed(result)) {
+      if (!rewriterImpl.config.allowPatternRollback)
+        op->emitError("pattern '")
+            << pattern.getDebugName()
+            << "' produced IR that could not be legalized";
+      rewriterImpl.resetState(curState, pattern.getDebugName());
+    }
+    if (config.listener)
+      config.listener->notifyPatternEnd(pattern, result);
+    return result;
+  };
+
+  // Try to match and rewrite a pattern on this operation.
+  return applicator.matchAndRewrite(op, rewriter, canApply, onFailure,
+                                    onSuccess);
+}
+```
+<br/>
+
+After an OpConversionPattern which is defined by user is applied successfully, the framework will call legalizePatternResult to legalize newly added ops:
+```C++
+LogicalResult
+OperationLegalizer::legalizePatternResult(Operation *op, const Pattern &pattern,
+                                          ConversionPatternRewriter &rewriter,
+                                          RewriterState &curState) {
+  // Legalize each of the actions registered during application.
+  RewriterState newState = impl.getCurrentState();
+  if (failed(legalizePatternBlockRewrites(op, rewriter, impl, curState,
+                                          newState)) ||
+      failed(legalizePatternRootUpdates(rewriter, impl, curState, newState)) ||
+      failed(legalizePatternCreatedOperations(rewriter, impl, curState,
+                                              newState))) {
+    return failure();
+  }
+
+  LLVM_DEBUG(logSuccess(impl.logger, "pattern applied successfully"));
+  return success();
+}
+```
+
+### FuncOpConverter
+```C++
+// examples/lower_toy_dialect/toy_passes.cpp
+Block& block = op.getFunctionBody().front();
+rewriter.setInsertionPointToStart(&block);
+for (int i = 0; i < numArgs; i++) {
+  auto oldArg = block.getArgument(i);
+  auto newArg = block.addArgument(newInputTypes[i], oldArg.getLoc());
+  auto ucCastOp = rewriter.create<UnrealizedConversionCastOp>(oldArg.getLoc(), oldArg.getType(), newArg);
+  rewriter.replaceAllUsesWith(oldArg, ucCastOp.getOutputs()[0]);
+}
+
+// replaceAllUsesWith
+// llvm-project/mlir/include/mlir/IR/PatternMatch.h
+
+  // func.func @main(%arg0: tensor<?xf64>, %arg1: tensor<?xf64>) -> tensor<?xf64> {
+  //   %0 = arith.addf %arg0, %arg1 : tensor<?xf64>
+  //   return %0 : tensor<?xf64>
+  // }
+
+  /// Find uses of `from` and replace them with `to`. Also notify the listener
+  /// about every in-place op modification (for every use that was replaced).
+  void replaceAllUsesWith(Value from, Value to) {
+    for (OpOperand &operand : llvm::make_early_inc_range(from.getUses())) {
+      Operation *op = operand.getOwner(); // Here, op is "arith.addf"
+      modifyOpInPlace(op, [&]() { operand.set(to); });
+    }
+  }
+
+  /// This method is a utility wrapper around an in-place modification of an
+  /// operation. It wraps calls to `startOpModification` and
+  /// `finalizeOpModification` around the given callable.
+  template <typename CallableT>
+  void modifyOpInPlace(Operation *root, CallableT &&callable) {
+    startOpModification(root);
+    callable();
+    finalizeOpModification(root);
+  }
+
+void ConversionPatternRewriter::startOpModification(Operation *op) {
+  assert(!impl->wasOpReplaced(op) &&
+         "attempting to modify a replaced/erased op");
+#ifndef NDEBUG
+  impl->pendingRootUpdates.insert(op);
+#endif
+  impl->appendRewrite<ModifyOperationRewrite>(op);
 }
 ```

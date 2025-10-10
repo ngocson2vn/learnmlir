@@ -2,4 +2,4 @@
 
 set -e
 
-build/main ./input.mlir -debug
+build/main ./input.mlir #-debug

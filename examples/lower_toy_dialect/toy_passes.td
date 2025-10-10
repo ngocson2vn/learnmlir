@@ -1,6 +1,6 @@
 include "mlir/Pass/PassBase.td"
 
-def ConvertToyToArith: Pass<"convert-toy-to-arith", "mlir::ModuleOp"> {
+def ConvertToyToArithPass: Pass<"convert-toy-to-arith", "mlir::ModuleOp"> {
     let summary = "Convert Toy to Arith";
     let description = [{
       This pass converts the Toy Dialect into the Arith Dialect.
@@ -10,7 +10,7 @@ def ConvertToyToArith: Pass<"convert-toy-to-arith", "mlir::ModuleOp"> {
                              "mlir::toy::ToyDialect"];
 }
 
-def ConvertTensorToMemRef: Pass<"convert-tensor-to-memref", "mlir::ModuleOp"> {
+def ConvertTensorToMemRefPass: Pass<"convert-tensor-to-memref", "mlir::ModuleOp"> {
     let summary = "Convert Tensor to MemRef";
     let description = [{
       This pass converts the Tensor type into the MemRef type.

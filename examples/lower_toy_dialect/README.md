@@ -37,6 +37,7 @@ sudo ln -sf /usr/lib/llvm-17/bin/ld.lld /usr/bin/ld.lld
 
 ## How to build
 ```Bash
+git submodule update --init --recursive
 ./build.sh
 ```
 Both LLVM and MLIR libs will be built together.

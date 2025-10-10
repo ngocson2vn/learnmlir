@@ -59,8 +59,8 @@ int main(int argc, char **argv) {
 
   // Set up the pass manager
   PassManager pm(&context);
-  pm.addPass(mlir::toy::createConvertToyToArith());
-  pm.addPass(mlir::toy::createConvertTensorToMemRef());
+  pm.addPass(mlir::toy::createConvertToyToArithPass());
+  pm.addPass(mlir::toy::createConvertTensorToMemRefPass());
   // pm.addPass(mlir::createCanonicalizerPass());
 
   // Apply the pass
@@ -72,5 +72,6 @@ int main(int argc, char **argv) {
   // Print the resulting module
   llvm::outs() << "\nLowered MLIR:\n";
   module->print(llvm::outs());
+  llvm::outs() << "\nAll done\n";
   return 0;
 }

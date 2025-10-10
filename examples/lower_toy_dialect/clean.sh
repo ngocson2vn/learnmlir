@@ -1,8 +1,9 @@
 #!/bin/bash
 
-for f in $(find build -mindepth 1 -maxdepth 1 | grep -v llvm-project)
-do
-  rm -rf $f
-done
+set -e
 
-rm -rf build/llvm-project/build
+rm -rf ../../llvm-project/build
+rm -rf ./build
+rm -rf ./.cmake.sha256
+
+echo "DONE"

@@ -17,8 +17,8 @@ using namespace mlir;
 
 namespace mlir::toy {
 
-#define GEN_PASS_DEF_CONVERTTOYTOARITH
-#define GEN_PASS_DEF_CONVERTTENSORTOMEMREF
+#define GEN_PASS_DEF_CONVERTTOYTOARITHPASS
+#define GEN_PASS_DEF_CONVERTTENSORTOMEMREFPASS
 #include "toy_passes.h.inc"
 
 } // namespace mlir::toy
@@ -48,7 +48,7 @@ struct ToyAddLowering : public OpConversionPattern<toy::AddOp> {
 };
 
 // Pass to lower toy dialect to arith dialect
-struct ConvertToyToArith : public toy::impl::ConvertToyToArithBase<ConvertToyToArith> {
+struct ConvertToyToArithPass : public toy::impl::ConvertToyToArithPassBase<ConvertToyToArithPass> {
   void getDependentDialects(DialectRegistry &registry) const override {
     registry.insert<arith::ArithDialect>();
   }
@@ -106,8 +106,9 @@ struct TensorToMemRefConverter : public TypeConverter {
         [](mlir::OpBuilder &builder, mlir::Type resultType,
            mlir::ValueRange convertedValues, mlir::Location loc) -> mlir::Value {
           assert(convertedValues.size() == 1 && "convertedValues must have size = 1");
-          auto srcValue = builder.create<mlir::bufferization::ToTensorOp>(loc, resultType, convertedValues[0]);
-          return srcValue;
+          auto srcValue = builder.create<UnrealizedConversionCastOp>(loc, resultType, convertedValues[0]);
+          // return mlir::Value();
+          return srcValue.getOutputs()[0];
         });
 
     // Register target materialization: tensor<?xf64> -> memref<?xf64>
@@ -117,9 +118,9 @@ struct TensorToMemRefConverter : public TypeConverter {
 
           SmallVector<Value> tgtValues;
           for (const auto& [t, v] : llvm::zip(resultTypes, srcValues)) {
-            auto ret = builder.create<mlir::bufferization::ToBufferOp>(loc, t, v);
+            auto ret = builder.create<UnrealizedConversionCastOp>(loc, t, v);
             llvm::outs() << "\nMaterialized " << ret << "\n";
-            tgtValues.push_back(ret);
+            tgtValues.push_back(ret.getOutputs()[0]);
           }
 
           return tgtValues;
@@ -131,13 +132,16 @@ struct TensorToMemRefConverter : public TypeConverter {
 struct FuncOpConverter : public OpConversionPattern<func::FuncOp> {
   using OpConversionPattern<func::FuncOp>::OpConversionPattern;
 
-  LogicalResult matchAndRewrite(func::FuncOp op, OpAdaptor adaptor,
+  LogicalResult matchAndRewrite(func::FuncOp oldFunc, OpAdaptor adaptor,
                                 ConversionPatternRewriter &rewriter) const override {
 
-    llvm::outs() << "\nBegin FuncOpConverter:\n" << *op->getParentOp() << "\n";
-    auto typeConverter = getTypeConverter();
+    llvm::outs() << "\nBegin FuncOpConverter:\n" << *oldFunc->getParentOp() << "\n";
 
-    auto oldFuncType = op.getFunctionType();
+    //===============================================================================================
+    // 1. Create newFunc
+    //===============================================================================================
+    auto typeConverter = getTypeConverter();
+    auto oldFuncType = oldFunc.getFunctionType();
 
     // Convert input types
     SmallVector<Type> newInputTypes;
@@ -151,29 +155,87 @@ struct FuncOpConverter : public OpConversionPattern<func::FuncOp> {
       return failure();
     }
 
-    // // Convert block signature
-    // if (failed(rewriter.convertRegionTypes(&op.getRegion(), *getTypeConverter()))) {
-    //   return failure();
-    // }
+    auto newFuncType = FunctionType::get(getContext(), newInputTypes, newResultTypes);
+    auto newFunc = rewriter.create<func::FuncOp>(oldFunc.getLoc(), oldFunc.getName(), newFuncType);
 
-    int numArgs = op.getNumArguments();
-    Block& block = op.getFunctionBody().front();
-    rewriter.setInsertionPointToStart(&block);
-    for (int i = 0; i < numArgs; i++) {
-      auto oldArg = block.getArgument(i);
-      auto newArg = block.addArgument(newInputTypes[i], oldArg.getLoc());
-      auto ucCastOp = rewriter.create<UnrealizedConversionCastOp>(oldArg.getLoc(), oldArg.getType(), newArg);
-      rewriter.replaceAllUsesWith(oldArg, ucCastOp.getOutputs()[0]);
+    // Copy attrs except the type
+    for (auto attr : oldFunc->getAttrs()) {
+      if (attr.getName() != oldFunc.getFunctionTypeAttrName()) {
+        newFunc->setAttr(attr.getName(), attr.getValue());
+      }
     }
 
-    // Remove 0 ~ numArgs -1 arguments
-    block.eraseArguments(0, numArgs);
+    newFunc.setVisibility(oldFunc.getVisibility());
 
-    // Update function signature.
-    auto newFuncType = FunctionType::get(getContext(), newInputTypes, newResultTypes);
-    op.setFunctionType(newFuncType);
+    // Move the body.
+    rewriter.inlineRegionBefore(oldFunc.getBody(), newFunc.getBody(), newFunc.end());
 
-    llvm::outs() << "\nAfter FuncOpConverter:\n" << *op->getParentOp() << "\n\n";
+    //===============================================================================================
+    // 2. Convert the entry block's arguments
+    //===============================================================================================
+    // Get the old entry block (now inside newFunc).
+    Block& oldEntry = newFunc.getBody().front();
+
+    // 1) Create a fresh entry block with converted argument types.
+    SmallVector<Location> argLocs;
+    argLocs.reserve(oldEntry.getNumArguments());
+    for (BlockArgument a : oldEntry.getArguments()) {
+      argLocs.push_back(a.getLoc());
+    }
+
+    SmallVector<Type> newArgTypes(newFuncType.getInputs().begin(), newFuncType.getInputs().end());
+
+    // Insert the new block before the old one.
+    Block *newEntry = rewriter.createBlock(&newFunc.getBody(), newFunc.getBody().begin(), newArgTypes, argLocs);
+
+    // 2) Materialize conversions from newEntry args to the types expected by oldEntry.
+    // We need a mapping: newArgs -> bridgeArgs (with old types) -> uses
+    SmallVector<Value> bridgeArgs;
+    bridgeArgs.reserve(oldEntry.getNumArguments());
+    rewriter.setInsertionPoint(newEntry, newEntry->begin());
+    for (auto pair : llvm::zip(oldEntry.getArguments(), newEntry->getArguments())) {
+      Value oldArg = std::get<0>(pair);
+      Value newArg = std::get<1>(pair);
+      Type oldTy = oldArg.getType();
+      Type newTy = newArg.getType();
+      Value bridge;
+      if (oldTy != newTy) {
+        // Ask the TypeConverter to materialize a conversion at the block boundary.
+        bridge = typeConverter->materializeSourceConversion(rewriter, oldArg.getLoc(), oldTy, newArg);
+        if (!bridge) {
+          llvm::outs() << "\nCurrent MLIR module state:\n";
+          llvm::outs() << *oldFunc->getParentOp() << "\n\n";
+          llvm::errs() << "failed to materialize conversion from " << newTy << " to " << oldTy;
+          return failure();
+        }
+      }
+
+      bridgeArgs.push_back(bridge);
+    }
+
+    llvm::outs() << "\nBefore update block arguments:\n";
+    llvm::outs() << *oldFunc->getParentOp() << "\n\n";
+
+    // 3) Replace all uses of old entry arguments inside the oldEntry with the bridged values.
+    for (auto pair : llvm::zip(oldEntry.getArguments(), bridgeArgs)) {
+      rewriter.replaceAllUsesWith(std::get<0>(pair), std::get<1>(pair));
+    }
+
+    llvm::outs() << "\nAfter update block arguments:\n";
+    llvm::outs() << *oldFunc->getParentOp() << "\n\n";
+
+    // 4) Move the operations from oldEntry to newEntry and erase the old block.
+    rewriter.inlineBlockBefore(&oldEntry, newEntry, newEntry->end(), newEntry->getArguments());
+
+    llvm::outs() << "\nAfter move the entry block:\n";
+    llvm::outs() << *oldFunc->getParentOp() << "\n\n";
+
+    //===============================================================================================
+    // 3. Replace oldFunc with newFunc
+    //===============================================================================================
+    rewriter.replaceOp(oldFunc, newFunc);
+
+    llvm::outs() << "\nAfter FuncOpConverter:\n" << *newFunc->getParentOp() << "\n\n";
 
     return success();
   }
@@ -187,19 +249,17 @@ struct FuncReturnOpConverter : public OpConversionPattern<func::ReturnOp> {
       : OpConversionPattern(typeConverter, context, benefit) {}
 
   LogicalResult matchAndRewrite(
-      func::ReturnOp op, OpAdaptor adaptor,
+      func::ReturnOp returnOp, OpAdaptor adaptor,
       ConversionPatternRewriter &rewriter) const override {
     llvm::outs() << "\nBegin FuncReturnOpConverter:\n";
-    llvm::outs() << *op->getParentOp() << "\n\n";
+    llvm::outs() << *returnOp->getParentOp() << "\n\n";
 
     auto operands = adaptor.getOperands();
-    for (int i = 0; i < operands.size(); i++) {
-      llvm::outs() << "Return operands[" << i << "]: " << operands[i] << "\n";
-      op.setOperand(i, operands[i]);
-    }
+    auto newReturnOp = rewriter.create<func::ReturnOp>(returnOp.getLoc(), operands);
+    rewriter.replaceOp(returnOp, newReturnOp);
 
     llvm::outs() << "\nAfter FuncReturnOpConverter:\n";
-    llvm::outs() << *op->getParentOp() << "\n\n";
+    llvm::outs() << *newReturnOp->getParentOp() << "\n\n";
     return success();
   }
 };
@@ -269,7 +329,7 @@ struct AddFOpConverter : public OpConversionPattern<arith::AddFOp> {
 };
 
 // Step 4: Define the Pass
-struct ConvertTensorToMemRef : public toy::impl::ConvertTensorToMemRefBase<ConvertTensorToMemRef> {
+struct ConvertTensorToMemRefPass : public toy::impl::ConvertTensorToMemRefPassBase<ConvertTensorToMemRefPass> {
   static bool checkOpLegality(Operation* op) {
     if (op->getNumOperands() > 0) {
       for (const auto& opr : op->getOperands()) {
@@ -285,12 +345,11 @@ struct ConvertTensorToMemRef : public toy::impl::ConvertTensorToMemRefBase<Conve
 
   void runOnOperation() override {
     auto module = getOperation();
-    TensorToMemRefConverter converter;
+    TensorToMemRefConverter typeConverter;
 
     // Define conversion target
     ConversionTarget target(getContext());
     target.addLegalDialect<BuiltinDialect>();
-    target.addLegalDialect<func::FuncDialect>();
     target.addLegalDialect<arith::ArithDialect>();
     target.addLegalDialect<memref::MemRefDialect>();
     target.addLegalDialect<bufferization::BufferizationDialect>();
@@ -305,7 +364,7 @@ struct ConvertTensorToMemRef : public toy::impl::ConvertTensorToMemRefBase<Conve
     }
 
     target.addDynamicallyLegalOp<func::FuncOp>([&](func::FuncOp op) {
-      auto isLegal = converter.isSignatureLegal(op.getFunctionType());
+      auto isLegal = typeConverter.isSignatureLegal(op.getFunctionType());
       if (!isLegal) {
         llvm::outs() << "\nFuncOp " << op.getOperation() << " is not legal ❌\n";
         return false;
@@ -317,8 +376,8 @@ struct ConvertTensorToMemRef : public toy::impl::ConvertTensorToMemRefBase<Conve
 
     // Populate conversion patterns
     RewritePatternSet patterns(&getContext());
-    patterns.add<FuncOpConverter, FuncReturnOpConverter>(converter, &getContext());
-    patterns.add<AddFOpConverter>(converter, &getContext());
+    patterns.add<FuncOpConverter, FuncReturnOpConverter>(typeConverter, &getContext());
+    patterns.add<AddFOpConverter>(typeConverter, &getContext());
 
     // Apply partial conversion
     if (failed(applyPartialConversion(module, target, std::move(patterns)))) {
