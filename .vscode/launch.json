@@ -349,6 +349,20 @@
         "env": {
             "CUDA_VISIBLE_DEVICES": "0"
         }
+    },
+    {
+        "name": "toy_compiler",
+        "type": "lldb-dap",
+        "request": "launch",
+        "console": "integratedTerminal",
+        "program": "${workspaceFolder}/examples/toy_compiler/build/main",
+        "cwd": "${workspaceFolder}/examples/toy_compiler",
+        "args": [
+            "./add_two_tensors.toy"
+        ],
+        "env": {
+            "CUDA_VISIBLE_DEVICES": "0"
+        }
     }
   ]
 }

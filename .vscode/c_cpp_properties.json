@@ -6,11 +6,11 @@
                 "/usr/local/cuda-12.4/include",
                 "${workspaceFolder}/llvm-project/mlir/include",
                 "${workspaceFolder}/llvm-project/llvm/include",
-                "${workspaceFolder}/llvm-project/mlir/include",
                 "${workspaceFolder}/llvm-project/build/include",
                 "${workspaceFolder}/llvm-project/build/tools/mlir/include",
                 "${workspaceFolder}/examples/lower_toy_dialect",
-                "${workspaceFolder}/examples/lower_toy_dialect/build"
+                "${workspaceFolder}/examples/lower_toy_dialect/build",
+                "${workspaceFolder}/examples/toy_compiler/build"
             ],
             "defines": [
                 "GOOGLE_CUDA",
@@ -24,13 +24,13 @@
             "browse": {
                 "path": [
                     "/usr/local/cuda-12.4/include",
-                    "${workspaceFolder}/llvm-project/mlir/include",
+                    "${workspaceFolder}/llvm-project/mlir/include/**",
                     "${workspaceFolder}/llvm-project/llvm/include",
-                    "${workspaceFolder}/llvm-project/mlir/include",
                     "${workspaceFolder}/llvm-project/build/include",
                     "${workspaceFolder}/llvm-project/build/tools/mlir/include",
                     "${workspaceFolder}/examples/lower_toy_dialect",
-                    "${workspaceFolder}/examples/lower_toy_dialect/build"
+                    "${workspaceFolder}/examples/lower_toy_dialect/build",
+                    "${workspaceFolder}/examples/toy_compiler/build"
                 ],
                 "databaseFilename": "${workspaceFolder}/.vscode/vc.db",
                 "limitSymbolsToIncludedHeaders": false

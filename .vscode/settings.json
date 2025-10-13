@@ -129,6 +129,9 @@
     "sim_unordered_map": "cpp",
     "sim_unordered_set": "cpp",
     "sim_vector": "cpp",
-    "*.mlir": "mlir"
-  }
+    "*.mlir": "mlir",
+    "*.def": "cpp",
+    "*.td": "tablegen"
+  },
+  "mlir.tablegen_server_path": "/data00/home/son.nguyen/workspace/learnmlir/llvm-project/build/bin/tblgen-lsp-server"
 }
