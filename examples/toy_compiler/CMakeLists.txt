@@ -21,25 +21,61 @@ include_directories(${LLVM_BINARY_DIR}/tools/mlir/include)
 message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
+include_directories(.)
+
+# frontend
 add_subdirectory(frontend)
 
+# middleend
+add_subdirectory(middleend)
+
+# backend
+add_subdirectory(backend)
+
+# Find the CUDA runtime library
+find_library(CUDA_RUNTIME_LIBRARY
+  NAMES cudart
+  PATHS ${CUDA_DIR}/lib64
+  PATH_SUFFIXES lib
+  NO_DEFAULT_PATH
+)
+message(STATUS "CUDA_RUNTIME_LIBRARY: ${CUDA_RUNTIME_LIBRARY}")
+
+# main
 add_executable(main 
   main.cpp
 )
 target_compile_options(main PRIVATE -fno-rtti -g -O0)
 target_link_libraries(main PRIVATE
   frontend
+  middleend
+  backend
   MLIRIR
   MLIRDialect
+  MLIRRegisterAllExtensions
   MLIRFuncDialect
   MLIRArithDialect
   MLIRLinalgDialect
+  MLIRNVVMDialect
+  MLIRLLVMDialect
   MLIRPass
   MLIRTransforms
   MLIRTransformUtils
+  MLIRLinalgTransforms
+  MLIRSCFToGPU
+  MLIRGPUTransforms
+  MLIRSCFToControlFlow
+  MLIRGPUToNVVMTransforms
+  MLIRConvertToLLVMPass
+  MLIRBuiltinToLLVMIRTranslation
+  MLIRNVVMToLLVMIRTranslation
+  MLIRGPUToLLVMIRTranslation
+  MLIRLLVMToLLVMIRTranslation
+  MLIRExecutionEngine
   MLIRParser
   MLIRSupport
   MLIRTableGen
   LLVMTableGen
   clang_rt.ubsan_standalone-x86_64
+  ${CUDA_RUNTIME_LIBRARY}
 )

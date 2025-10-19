@@ -361,7 +361,8 @@
             "./add_two_tensors.toy"
         ],
         "env": {
-            "CUDA_VISIBLE_DEVICES": "0"
+            "CUDA_VISIBLE_DEVICES": "0",
+            "CUDA_DIR": "/usr/local/cuda-12.4"
         }
     }
   ]

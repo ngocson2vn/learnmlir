@@ -8,8 +8,9 @@ add_public_tablegen_target(ToyOpsIncGen)
 
 # frontend library
 add_library(frontend
-  frontend.cpp
-  toy_dialect.cpp
+  AST.cc
+  frontend.cc
+  toy_dialect.cc
 )
 
 add_dependencies(frontend 

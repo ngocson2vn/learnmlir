@@ -19,6 +19,7 @@
 #include <string>
 
 namespace toy {
+namespace compiler {
 namespace frontend {
 
 /// Structure definition a location in a file.
@@ -230,7 +231,7 @@ private:
 };
 
 } // namespace frontend
+} // namespace compiler
 } // namespace toy
-
 
 #endif // TOY_LEXER_H

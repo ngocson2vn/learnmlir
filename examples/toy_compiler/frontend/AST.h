@@ -24,6 +24,7 @@
 #include <vector>
 
 namespace toy {
+namespace compiler {
 namespace frontend {
 
 /// A variable type with shape information.
@@ -40,6 +41,7 @@ public:
     Expr_Num,
     Expr_Literal,
     Expr_Var,
+    Expr_VarAssign,
     Expr_BinOp,
     Expr_Call,
     Expr_Print,
@@ -127,6 +129,23 @@ public:
   static bool classof(const ExprAST *c) { return c->getKind() == Expr_VarDecl; }
 };
 
+/// Expression class for defining an assignment
+class AssignExprAST : public ExprAST {
+  std::unique_ptr<ExprAST> src;
+  std::unique_ptr<ExprAST> dst;
+
+public:
+  AssignExprAST(Location loc, std::unique_ptr<ExprAST> dst, std::unique_ptr<ExprAST> src)
+      : ExprAST(Expr_VarAssign, std::move(loc)), 
+        dst(std::move(dst)), src(std::move(src)) {}
+
+  ExprAST *getDst() { return dst.get(); }
+  ExprAST *getSrc() { return src.get(); }
+
+  /// LLVM style RTTI
+  static bool classof(const ExprAST *c) { return c->getKind() == Expr_VarAssign; }
+};
+
 /// Expression class for a return operator.
 class ReturnExprAST : public ExprAST {
   std::optional<std::unique_ptr<ExprAST>> expr;
@@ -202,16 +221,16 @@ public:
 class PrototypeAST {
   Location location;
   std::string name;
-  std::vector<std::unique_ptr<VariableExprAST>> args;
+  std::vector<std::unique_ptr<VarDeclExprAST>> args;
 
 public:
   PrototypeAST(Location location, const std::string &name,
-               std::vector<std::unique_ptr<VariableExprAST>> args)
+               std::vector<std::unique_ptr<VarDeclExprAST>> args)
       : location(std::move(location)), name(name), args(std::move(args)) {}
 
   const Location &loc() { return location; }
   llvm::StringRef getName() const { return name; }
-  llvm::ArrayRef<std::unique_ptr<VariableExprAST>> getArgs() { return args; }
+  llvm::ArrayRef<std::unique_ptr<VarDeclExprAST>> getArgs() { return args; }
 };
 
 /// This class represents a function definition itself.
@@ -242,6 +261,7 @@ public:
 void dump(ModuleAST &);
 
 } // namespace frontend
+} // namespace compiler
 } // namespace toy
 
 #endif // TOY_AST_H

@@ -2,6 +2,7 @@
 ```C++
 // main.cc
 #include "llvm/Support/Debug.h"
+#define DEBUG_TYPE "DEBUG"
 
 LLVM_DEBUG(llvm::dbgs() << "Start initializing " << getDialectNamespace() << "\n");
 ```

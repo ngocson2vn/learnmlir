@@ -1,41 +1,65 @@
 include "mlir/IR/OpBase.td"
+include "mlir/IR/SymbolInterfaces.td"
+include "mlir/Interfaces/FunctionInterfaces.td"
+include "mlir/Interfaces/SideEffectInterfaces.td"
 
 def Toy_Dialect : Dialect {
   let name = "toy";
   let cppNamespace = "mlir::toy";
 }
 
-def Toy_ConstantOp : Op<Toy_Dialect, "constant"> {
-  let summary = "constant";
+def Toy_FuncOp : Op<Toy_Dialect, "func", [
+    FunctionOpInterface, IsolatedFromAbove
+  ]> {
+  let summary = "user defined function operation";
   let description = [{
-    Constant operation turns a literal into an SSA value. The data is attached
-    to the operation as an attribute. For example:
+    The "toy.func" operation represents a user defined function. These are
+    callable SSA-region operations that contain toy computations.
+
+    Example:
 
     ```mlir
-      %0 = toy.constant dense<[1.0, 2.0, 3.0]> : tensor<3xf64>
+    toy.func @main() {
+      %0 = toy.constant dense<5.500000e+00> : tensor<f64>
+      %1 = toy.reshape(%0 : tensor<f64>) to tensor<2x2xf64>
+      toy.print %1 : tensor<2x2xf64>
+      toy.return
+    }
     ```
   }];
 
-  // The constant operation takes an attribute as the only input.
-  let arguments = (ins F64ElementsAttr:$value);
+  let arguments = (ins
+    SymbolNameAttr:$sym_name,
+    TypeAttrOf<FunctionType>:$function_type
+  );
 
-  // The constant operation returns a single value of TensorType.
-  let results = (outs F64Tensor);
+  let regions = (region AnyRegion:$body);
 
-  // Add custom build methods for the constant operation. These method populates
-  // the `state` that MLIR uses to create operations, i.e. these are used when
-  // using `builder.create<ConstantOp>(...)`.
-  let builders = [
-    // Build a constant with a given constant tensor value.
-    OpBuilder<(ins "DenseElementsAttr":$value), [{
-      build($_builder, $_state, value.getType(), value);
-    }]>,
+  let extraClassDeclaration = [{
+    //===------------------------------------------------------------------===//
+    // FunctionOpInterface Methods
+    //===------------------------------------------------------------------===//
 
-    // Build a constant with a given constant floating-point value.
-    OpBuilder<(ins "double":$value), [{
-      build($_builder, $_state, value);
-    }]>
-  ];
+    /// Returns the argument types of this function.
+    ArrayRef<Type> getArgumentTypes() { return getFunctionType().getInputs(); }
+
+    /// Returns the result types of this function.
+    ArrayRef<Type> getResultTypes() { return getFunctionType().getResults(); }
+
+    ::mlir::Region *getCallableRegion() { return isExternal() ? nullptr : &getBody(); }
+
+    void setArgAttrsAttr(::mlir::ArrayAttr attr) {}
+
+    void setResAttrsAttr(::mlir::ArrayAttr attr) {}
+
+    ::mlir::ArrayAttr getArgAttrsAttr() { return {}; }
+
+    ::mlir::ArrayAttr getResAttrsAttr() { return {}; }
+
+    ::mlir::Attribute removeArgAttrsAttr() { return {}; }
+
+    ::mlir::Attribute removeResAttrsAttr() { return {}; }
+  }];
 }
 
 def Toy_AddOp : Op<Toy_Dialect, "add"> {
@@ -49,15 +73,46 @@ def Toy_AddOp : Op<Toy_Dialect, "add"> {
   let assemblyFormat = "$lhs `,` $rhs `:` type($lhs) `,` type($rhs) attr-dict `->` type($result)";
 }
 
-def Toy_PrintOp : Op<Toy_Dialect, "print"> {
-  let summary = "print operation";
+def Toy_StoreOp : Op<Toy_Dialect, "store"> {
+  let summary = "Store operation for the toy dialect";
   let description = [{
-    The "print" builtin operation prints a given input tensor, and produces no results.
+    This operation store source tensor into destination tensor.
+  }];
+  let arguments = (ins F64Tensor:$src, F64Tensor:$dst);
+
+  let assemblyFormat = "$src `,` $dst `:` type($src) `,` type($dst) attr-dict";
+}
+
+def Toy_ReturnOp : Op<Toy_Dialect, "return", [HasParent<"FuncOp">, Terminator]> {
+  let summary = "return operation";
+  let description = [{
+    The "return" operation represents a return operation within a function.
+    The operation takes an optional tensor operand and produces no results.
+    The operand type must match the signature of the function that contains
+    the operation. For example:
+
+    ```mlir
+      func.func @foo() -> tensor<2xf64> {
+        ...
+        toy.return %0 : tensor<2xf64>
+      }
+    ```
   }];
 
-  // The print operation takes an input tensor to print.
-  // We also allow a F64MemRef to enable interop during partial lowering.
-  let arguments = (ins AnyTypeOf<[F64Tensor, F64MemRef]>:$input);
+  // The return operation takes an optional input operand to return. This
+  // value must match the return type of the enclosing function.
+  let arguments = (ins Variadic<F64Tensor>:$input);
 
-  let assemblyFormat = "$input attr-dict `:` type($input)";
+  // The return operation only emits the input in the format if it is present.
+  let assemblyFormat = "($input^ `:` type($input))? attr-dict ";
+
+  // Allow building a ReturnOp with no return operand.
+  let builders = [
+    OpBuilder<(ins), [{ build($_builder, $_state, {}); }]>
+  ];
+
+  // Provide extra utility definitions on the c++ operation class definition.
+  let extraClassDeclaration = [{
+    bool hasOperand() { return getNumOperands() != 0; }
+  }];
 }

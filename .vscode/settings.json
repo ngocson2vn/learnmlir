@@ -131,7 +131,14 @@
     "sim_vector": "cpp",
     "*.mlir": "mlir",
     "*.def": "cpp",
-    "*.td": "tablegen"
+    "*.td": "tablegen",
+    "expected": "cpp",
+    "netfwd": "cpp",
+    "source_location": "cpp",
+    "spanstream": "cpp",
+    "stacktrace": "cpp",
+    "syncstream": "cpp",
+    "stream_ref": "cpp"
   },
   "mlir.tablegen_server_path": "/data00/home/son.nguyen/workspace/learnmlir/llvm-project/build/bin/tblgen-lsp-server"
 }

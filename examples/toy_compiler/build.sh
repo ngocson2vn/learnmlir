@@ -31,7 +31,8 @@ if [ "${now_hash}" != "${pre_hash}" ]; then
     -DLLVM_CCACHE_BUILD=ON \
     -DCOMPILER_RT_BUILD_GWP_ASAN=OFF \
     -DLLVM_INCLUDE_TESTS=OFF \
-    -DCOMPILER_RT_BUILD_SANITIZERS=ON
+    -DCOMPILER_RT_BUILD_SANITIZERS=ON \
+    -DCUDA_DIR=/usr/local/cuda-12.4
 
   cmake --build .
 

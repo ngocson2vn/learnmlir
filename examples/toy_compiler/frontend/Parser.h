@@ -26,6 +26,7 @@
 #include <vector>
 
 namespace toy {
+namespace compiler {
 namespace frontend {
 
 /// This is a simple recursive parser for the Toy language. It produces a well
@@ -175,6 +176,13 @@ private:
 
     auto loc = lexer.getLastLocation();
     lexer.getNextToken(); // eat identifier.
+    
+    if (lexer.getCurToken() == '=') {
+      lexer.getNextToken(); // eat '='
+      auto dst = std::make_unique<VariableExprAST>(loc, name);
+      auto src = parseExpression();
+      return std::make_unique<AssignExprAST>(std::move(loc), std::move(dst), std::move(src));
+    }
 
     if (lexer.getCurToken() != '(') // Simple variable ref.
       return std::make_unique<VariableExprAST>(std::move(loc), name);
@@ -339,6 +347,27 @@ private:
                                             std::move(*type), std::move(expr));
   }
 
+  std::unique_ptr<VarDeclExprAST> parseArgument() {
+    if (lexer.getCurToken() != tok_identifier)
+      return parseError<VarDeclExprAST>("identifier", "to begin declaration");
+    auto loc = lexer.getLastLocation();
+    std::string id(lexer.getId());
+    lexer.getNextToken(); // eat id
+
+    std::unique_ptr<VarType> type; // Type is optional, it can be inferred
+    if (lexer.getCurToken() == '<') {
+      type = parseType();
+      if (!type)
+        return nullptr;
+    }
+
+    if (!type)
+      type = std::make_unique<VarType>();
+
+    return std::make_unique<VarDeclExprAST>(std::move(loc), std::move(id),
+                                            std::move(*type), nullptr);
+  }
+
   /// Parse a block: a list of expression separated by semicolons and wrapped in
   /// curly braces.
   ///
@@ -411,14 +440,15 @@ private:
       return parseError<PrototypeAST>("(", "in prototype");
     lexer.consume(Token('('));
 
-    std::vector<std::unique_ptr<VariableExprAST>> args;
+    std::vector<std::unique_ptr<VarDeclExprAST>> args;
     if (lexer.getCurToken() != ')') {
       do {
-        std::string name(lexer.getId());
-        auto loc = lexer.getLastLocation();
-        lexer.consume(tok_identifier);
-        auto decl = std::make_unique<VariableExprAST>(std::move(loc), name);
-        args.push_back(std::move(decl));
+        // std::string name(lexer.getId());
+        // auto loc = lexer.getLastLocation();
+        // lexer.consume(tok_identifier);
+        // auto decl = std::make_unique<VarDeclExprAST>(std::move(loc), name);
+        auto arg = parseArgument();
+        args.push_back(std::move(arg));
         if (lexer.getCurToken() != ',')
           break;
         lexer.consume(Token(','));
@@ -485,6 +515,7 @@ private:
 };
 
 } // namespace frontend
+} // namespace compiler
 } // namespace toy
 
 #endif // TOY_PARSER_H

@@ -10,6 +10,7 @@
                 "${workspaceFolder}/llvm-project/build/tools/mlir/include",
                 "${workspaceFolder}/examples/lower_toy_dialect",
                 "${workspaceFolder}/examples/lower_toy_dialect/build",
+                "${workspaceFolder}/examples/toy_compiler",
                 "${workspaceFolder}/examples/toy_compiler/build"
             ],
             "defines": [
@@ -30,6 +31,7 @@
                     "${workspaceFolder}/llvm-project/build/tools/mlir/include",
                     "${workspaceFolder}/examples/lower_toy_dialect",
                     "${workspaceFolder}/examples/lower_toy_dialect/build",
+                    "${workspaceFolder}/examples/toy_compiler",
                     "${workspaceFolder}/examples/toy_compiler/build"
                 ],
                 "databaseFilename": "${workspaceFolder}/.vscode/vc.db",

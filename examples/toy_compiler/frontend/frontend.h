@@ -26,11 +26,13 @@ class ModuleOp;
 } // namespace mlir
 
 namespace toy {
+namespace compiler {
 namespace frontend {
 
 mlir::OwningOpRef<mlir::ModuleOp> getModule(mlir::MLIRContext& context, const std::string& inputFilename);
 
 } // namespace frontend
+} // namespace compiler
 } // namespace toy
 
 #endif // TOY_MLIRGEN_H
