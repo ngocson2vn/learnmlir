@@ -27,14 +27,3 @@ def LowerMemRefToLLVMPass : Pass<"lower-memref-to-llvm", "ModuleOp"> {
 
   let constructor = "createLowerMemRefToLLVMPass()";
 }
-
-
-def GpuModuleToCubinPass : Pass<"gpu-to-cubin", "ModuleOp"> {
-  let summary = "Pass to lower GPU Module cubin";
-
-  let options = [
-    Option<"capability_", "capability", "int", /*default=*/"86", "GPU Compute Capability">
-  ];
-
-  let constructor = "createGpuModuleToCubinPass()";
-}

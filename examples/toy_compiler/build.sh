@@ -35,7 +35,7 @@ if [ "${now_hash}" != "${pre_hash}" ]; then
     -DCOMPILER_RT_BUILD_GWP_ASAN=OFF \
     -DLLVM_INCLUDE_TESTS=OFF \
     -DCOMPILER_RT_BUILD_SANITIZERS=ON \
-    -DCUDA_DIR=/usr/local/cuda-12.4
+    -DCUDA_ROOT=/usr/local/cuda-12.4
 
   cmake --build .
 

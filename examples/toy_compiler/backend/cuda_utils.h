@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include <driver_types.h>
+
 #include "common/status.h"
 
 namespace cuda {
@@ -69,19 +71,17 @@ struct CudaComputeCapability {
   std::pair<int, int> ToPair() const { return std::make_pair(major, minor); }
 };
 
-struct DeviceProperties {
-  std::string name;
-  int computeMajor;
-  int computeMinor;
-  double peakFp16TensorCoreFlops;
-  double peakMemoryBwBytesPerSec;
-};
-
-status::Result<int> getComputeCapability();
-
-status::Result<std::string> getCudaDir();
+status::Result<std::string> getCudaRoot();
 
 status::Result<int> ParseCudaArch(const std::string& arch_str);
+
+status::Result<cudaDeviceProp> getDeviceProperties();
+
+int getComputeCapability();
+
+std::string getArch();
+
+std::string getFeatures();
 
 std::string getPtxasPath();
 

@@ -21,7 +21,5 @@ std::unique_ptr<OperationPass<func::FuncOp>> createTileLoopsPass(
 
 std::unique_ptr<mlir::OperationPass<ModuleOp>> createLowerMemRefToLLVMPass();
 
-std::unique_ptr<mlir::OperationPass<ModuleOp>> createGpuModuleToCubinPass();
-
 }  // namespace toy
 }  // namespace mlir

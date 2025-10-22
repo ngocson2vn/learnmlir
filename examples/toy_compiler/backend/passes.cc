@@ -22,108 +22,213 @@
 #include "passes.h"
 #include "utils.h"
 #include "cuda_utils.h"
-#include "llvm_utils.h"
-#include "nvidia_backend.h"
 
 using namespace mlir;
 
 namespace mlir::toy {
 
-#define GEN_PASS_DECL_GPUMODULETOCUBINPASS
-#define GEN_PASS_DEF_GPUMODULETOCUBINPASS
+#define GEN_PASS_DEF_LOWERMEMREFTOLLVMPASS
 #include "backend/passes.h.inc"
 
 } // namespace mlir::toy
 
 namespace {
 
-struct GPUModuleOpPattern : public mlir::OpConversionPattern<gpu::GPUModuleOp> {
-  GPUModuleOpPattern(MLIRContext *context, int cc)
-    : OpConversionPattern(context), capability_(cc) {
-  }
+struct LowerMemRefToLLVMFuncOpPattern : public mlir::OpConversionPattern<func::FuncOp> {  
+  using OpConversionPattern<func::FuncOp>::OpConversionPattern;
 
-  LogicalResult matchAndRewrite(gpu::GPUModuleOp gpuModule, OpAdaptor adaptor, mlir::ConversionPatternRewriter &rewriter) const override {
-    llvm::LLVMContext llvmContext;
-    auto llvmMod = mlir::translateModuleToLLVMIR(gpuModule, llvmContext);
-    if (!llvmMod) {
-      llvm::errs() << "Failed to translate module to LLVM IR\n";
+  LogicalResult matchAndRewrite(func::FuncOp oldFunc, OpAdaptor adaptor, mlir::ConversionPatternRewriter &rewriter) const override {
+    auto typeConverter = this->getTypeConverter();
+    //===============================================================================================
+    // 1. Create newFunc
+    //===============================================================================================
+    auto oldFuncType = cast<FunctionType>(oldFunc.getFunctionType());
+
+    // Convert input types
+    SmallVector<Type> newInputTypes;
+    if (failed(typeConverter->convertTypes(oldFuncType.getInputs(), newInputTypes))) {
       return failure();
     }
 
-    // LLVMIR to PTX
-    if (failed(nvidia::linkLibdevice(llvmMod.get(), capability_))) {
+    // Convert result types
+    SmallVector<Type> newResultTypes;
+    if (failed(typeConverter->convertTypes(oldFuncType.getResults(), newResultTypes))) {
       return failure();
     }
 
-    llvm::optimizeLLVMModule(llvmMod.get(), llvm::OptimizationLevel::O3, nvidia::kTriple);
-
-    std::string arch = std::string("sm_").append(std::to_string(capability_));
-    auto ptxVersion = cuda::getSupportedPtxVersion();
-    std::string features = std::string("+ptx").append(ptxVersion);
-    auto ptx = nvidia::translateLLVMIRToPTX(llvmMod.get(), arch, features);
-    if (ptx.empty()) {
-      llvm::errs() << "Failed to translate LLVMIR to PTX\n";
+    if (newResultTypes.size() > 1) {
+      llvm::errs() << "The function " << oldFunc.getName() << " returns more than 1 value\n";
       return failure();
     }
 
-    std::filesystem::path currentPath = std::filesystem::current_path();
-    std::string outputPtxFile = currentPath.string() + "/output.ptx";
-    bool ok = ::toy::utils::writeFile(ptx, outputPtxFile);
-    if (!ok) {
-      llvm::errs() << "Failed to save PTX to outputPtxFile\n";
+    auto resType = newResultTypes.size() == 1 ? newResultTypes[0] : LLVM::LLVMVoidType::get(oldFunc.getContext());
+
+    auto newFuncType = LLVM::LLVMFunctionType::get(resType, newInputTypes);
+    auto newFunc = rewriter.create<LLVM::LLVMFuncOp>(oldFunc.getLoc(), oldFunc.getName(), newFuncType);
+
+    // Copy attrs except the type
+    for (auto attr : oldFunc->getAttrs()) {
+      if (attr.getName() != newFunc.getFunctionTypeAttrName()) {
+        newFunc->setAttr(attr.getName(), attr.getValue());
+      }
+    }
+
+    newFunc.setVisibility(oldFunc.getVisibility());
+
+    // Move the body.
+    rewriter.inlineRegionBefore(oldFunc.getFunctionBody(), newFunc.getBody(), newFunc.end());
+    
+    Block& entryBlock = newFunc.front();
+    auto sig = typeConverter->convertBlockSignature(&entryBlock);
+    if (!sig.has_value()) {
+      llvm::errs() << "Failed to convert entry block signature\n";
       return failure();
     }
 
-    // PTX to CUBIN
-    std::string outputCubinFile = currentPath.string() + "/output.cubin";
-    auto cubinStr = nvidia::translatePTXtoCUBIN(outputPtxFile, arch, outputCubinFile);
-    if (cubinStr.empty()) {
-      llvm::errs() << "Failed to translate PTX to CUBIN\n";
-      return failure();
-    }
+    rewriter.applySignatureConversion(&entryBlock, sig.value(), typeConverter);
 
-    auto context = gpuModule.getContext();
-    auto symName = gpuModule.getSymName();
-
-    rewriter.startOpModification(gpuModule);
-    gpuModule.setSymName(symName.str() + "_old");
-
-    auto modOp = gpuModule->getParentOfType<mlir::ModuleOp>();
-    rewriter.setInsertionPoint(&modOp.front());
-    mlir::SmallVector<mlir::Attribute> objects;
-    auto nvvmTarget = mlir::NVVM::NVVMTargetAttr::get(context, 3, nvidia::kTriple, arch, features);
-    auto offloadingHandler = mlir::gpu::SelectObjectAttr::get(context, nvvmTarget);
-    auto gpuObj = mlir::gpu::ObjectAttr::get(nvvmTarget, mlir::gpu::CompilationTarget::Binary, rewriter.getStringAttr(cubinStr));
-    objects.push_back(gpuObj);
-    auto gpuBinOp = rewriter.create<mlir::gpu::BinaryOp>(gpuModule.getLoc(), symName, offloadingHandler, objects);
-
-    rewriter.finalizeOpModification(gpuModule);
-    rewriter.eraseOp(gpuModule);
+    //===============================================================================================
+    // 3. Replace oldFunc with newFunc
+    //===============================================================================================
+    rewriter.replaceOp(oldFunc, newFunc);
+    LLVM_DEBUG(llvm::dbgs() << "\nAfter FuncOpConverter:\n" << *newFunc->getParentOp() << "\n\n");
 
     return success();
   }
-
- private:
-  int capability_;
 };
 
-class GpuModuleToCubinPass : public mlir::toy::impl::GpuModuleToCubinPassBase<GpuModuleToCubinPass> {
+struct LowerMemRefToLLVMReturnOpPattern : public OpConversionPattern<func::ReturnOp> {
+  using OpConversionPattern<func::ReturnOp>::OpConversionPattern;
+
+  LogicalResult matchAndRewrite(func::ReturnOp oldReturnOp, OpAdaptor adaptor, ConversionPatternRewriter &rewriter) const override {
+    auto newReturnOp = rewriter.create<LLVM::ReturnOp>(oldReturnOp.getLoc(), oldReturnOp.getOperands());
+    rewriter.replaceOp(oldReturnOp, newReturnOp);
+
+    return success();
+  }
+};
+
+
+struct LowerMemRefToLLVMLoadOpPattern : public OpConversionPattern<memref::LoadOp> {
+  using OpConversionPattern<memref::LoadOp>::OpConversionPattern;
+
+  LogicalResult matchAndRewrite(memref::LoadOp loadOp, OpAdaptor adaptor, ConversionPatternRewriter &rewriter) const override {
+    auto elemType = loadOp.getMemRefType().getElementType();
+    auto resType = LLVM::LLVMPointerType::get(getContext());
+    auto operands = adaptor.getOperands();
+
+    // Type resultType, Type elementType, Value basePtr, ValueRange indices
+    auto loadPtr = rewriter.create<LLVM::GEPOp>(loadOp.getLoc(), resType, elemType, operands[0], operands[1]);
+    auto newOp = rewriter.create<LLVM::LoadOp>(loadOp.getLoc(), elemType, loadPtr);
+    rewriter.replaceOp(loadOp, newOp);
+
+    return success();
+  }
+};
+
+struct LowerMemRefToLLVMStoreOpPattern : public OpConversionPattern<memref::StoreOp> {
+  using OpConversionPattern<memref::StoreOp>::OpConversionPattern;
+
+  LogicalResult matchAndRewrite(memref::StoreOp storeOp, OpAdaptor adaptor, ConversionPatternRewriter &rewriter) const override {
+    auto elemType = storeOp.getMemRefType().getElementType();
+    auto resType = LLVM::LLVMPointerType::get(getContext());
+    auto operands = adaptor.getOperands();
+
+    // Type resultType, Type elementType, Value basePtr, ValueRange indices
+    auto storePtr = rewriter.create<LLVM::GEPOp>(storeOp.getLoc(), resType, elemType, operands[1], operands[2]);
+    auto newOp = rewriter.create<LLVM::StoreOp>(storeOp.getLoc(), operands[0], storePtr);
+    rewriter.replaceOp(storeOp, newOp);
+
+    return success();
+  }
+};
+
+struct LowerMemRefToLLVMTypeConverter : public TypeConverter {
+  LowerMemRefToLLVMTypeConverter() {
+    addConversion([](Type srcType) -> Type {
+      if (auto memrefType = dyn_cast<MemRefType>(srcType)) {
+        return LLVM::LLVMPointerType::get(srcType.getContext());
+      }
+
+      if (auto indexType = dyn_cast<IndexType>(srcType)) {
+        return IntegerType::get(srcType.getContext(), 64);
+      }
+
+      return srcType;
+    });
+
+    // Register source materialization: memref<?xf64> -> tensor<?xf64>
+    addSourceMaterialization(
+        [](mlir::OpBuilder &builder, mlir::Type resultType,
+           mlir::ValueRange convertedValues, mlir::Location loc) -> mlir::Value {
+          assert(convertedValues.size() == 1 && "convertedValues must have size = 1");
+          auto srcValue = builder.create<arith::IndexCastOp>(loc, resultType, convertedValues[0]);
+          return srcValue;
+        });
+
+    // Register target materialization: tensor<?xf64> -> memref<?xf64>
+    addTargetMaterialization(
+        [](mlir::OpBuilder &builder, mlir::TypeRange resultTypes,
+           mlir::ValueRange srcValues, mlir::Location loc) -> SmallVector<Value> {
+
+          SmallVector<Value> tgtValues;
+          for (const auto& [t, v] : llvm::zip(resultTypes, srcValues)) {
+            auto ret = builder.create<arith::IndexCastOp>(loc, t, v);
+            tgtValues.push_back(ret);
+          }
+
+          return tgtValues;
+        });
+  }
+};
+
+class LowerMemRefToLLVMPass : public mlir::toy::impl::LowerMemRefToLLVMPassBase<LowerMemRefToLLVMPass> {
+  void getDependentDialects(DialectRegistry &registry) const override {
+    registry.insert<LLVM::LLVMDialect>();
+  }
+
   void runOnOperation() override {
-    auto context = &getContext();
     auto module = getOperation();
 
-    ConversionTarget target(*context);
-    target.addLegalDialect<gpu::GPUDialect>();
-    target.addLegalDialect<NVVM::NVVMDialect>();
+    // Define type converter
+    LowerMemRefToLLVMTypeConverter typeConverter;
+
+    // Define conversion target
+    ConversionTarget target(getContext());
+
+    //===========================================================================
+    // 1. Convert function signature
+    //===========================================================================
     target.addLegalDialect<LLVM::LLVMDialect>();
-    target.addIllegalOp<gpu::GPUModuleOp>();
 
-    RewritePatternSet patterns(context);
-    patterns.add<GPUModuleOpPattern>(context, capability_);
+    target.addDynamicallyLegalOp<func::FuncOp>([&](func::FuncOp op) {
+      auto isLegal = typeConverter.isSignatureLegal(op.getFunctionType());
+      if (!isLegal) {
+        LLVM_DEBUG(llvm::dbgs() << "\nFuncOp " << op.getOperation() << " is not legal ❌\n");
+        return false;
+      }
 
-    // Apply the conversion
-    if (failed(applyPartialConversion(module, target, std::move(patterns)))) {
+      LLVM_DEBUG(llvm::dbgs() << "\nFuncOp is legal ✅\n");
+      return true;
+    });
+
+    // Populate conversion patterns
+    RewritePatternSet patterns(&getContext());
+    patterns.add<
+      LowerMemRefToLLVMFuncOpPattern,
+      LowerMemRefToLLVMLoadOpPattern,
+      LowerMemRefToLLVMStoreOpPattern,
+      LowerMemRefToLLVMReturnOpPattern
+    >(typeConverter, &getContext());
+
+    // Apply partial convertion
+    ConversionConfig config;
+    config.buildMaterializations = true;
+    if (failed(applyPartialConversion(module, target, std::move(patterns), config))) {
       signalPassFailure();
+      LLVM_DEBUG(llvm::dbgs() << "\nRestored module:\n");
+      LLVM_DEBUG(llvm::dbgs() << module << "\n");
+      return;
     }
   }
 };
@@ -131,6 +236,6 @@ class GpuModuleToCubinPass : public mlir::toy::impl::GpuModuleToCubinPassBase<Gp
 } // namespace
 
 std::unique_ptr<mlir::OperationPass<ModuleOp>> 
-mlir::toy::createGpuModuleToCubinPass() {
-  return std::make_unique<GpuModuleToCubinPass>();
+mlir::toy::createLowerMemRefToLLVMPass() {
+  return std::make_unique<LowerMemRefToLLVMPass>();
 }

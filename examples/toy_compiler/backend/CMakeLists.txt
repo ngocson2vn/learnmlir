@@ -3,18 +3,22 @@ set(LLVM_TARGET_DEFINITIONS passes.td)
 mlir_tablegen(passes.h.inc -gen-pass-decls)
 add_public_tablegen_target(ToyBackendPassIncGen)
 
-include_directories(${CUDA_DIR}/include)
+include_directories(${CUDA_ROOT}/include)
+
+# cuda_utils
+add_library(cuda_utils
+  utils.cc
+  cuda_utils.cc
+)
 
 add_library(backend
   backend.cc
   utils.cc
-  llvm_utils.cc
   cuda_utils.cc
   tile_loops_pass.cc
-  nvidia_backend.cc
   passes.cc
 )
-add_dependencies(backend 
+add_dependencies(backend
   ToyBackendPassIncGen
   MLIRIR
   MLIRDialect

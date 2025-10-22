@@ -28,6 +28,7 @@
 #include "mlir/Conversion/ConvertToLLVM/ToLLVMPass.h"
 #include "mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h"
 
+#include "mlir/Target/LLVM/NVVM/Target.h"
 #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Dialect/GPU/GPUToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Dialect/NVVM/NVVMToLLVMIRTranslation.h"
@@ -39,10 +40,8 @@
 
 #include "passes.h"
 #include "backend.h"
-#include "llvm_utils.h"
 #include "cuda_utils.h"
-#include "nvidia_backend.h"
-#include "common/passes.h"
+
 
 using namespace mlir;
 
@@ -50,7 +49,7 @@ namespace toy {
 namespace compiler {
 namespace backend {
 
-llvm::LogicalResult lower(ModuleOp& module, int capability) {
+llvm::LogicalResult lower(ModuleOp& module) {
   auto& context = *module.getContext();
 
   // Load necessary dialects
@@ -82,14 +81,18 @@ llvm::LogicalResult lower(ModuleOp& module, int capability) {
   );
   output->keep();
 
+
   //============================================================================
-  // To GPU
+  // Lower Loops to GPU
   //============================================================================
   mlir::SmallVector<int64_t> tileSizes{128};
   pm.addNestedPass<func::FuncOp>(::mlir::toy::createTileLoopsPass(tileSizes));
   pm.addNestedPass<func::FuncOp>(mlir::createGpuMapParallelLoopsPass());
   pm.addPass(mlir::createConvertParallelLoopToGpuPass());
+  
+  // memref parameters -> llvm pointers
   pm.addPass(mlir::toy::createLowerMemRefToLLVMPass());
+
   pm.addPass(mlir::createCanonicalizerPass());
   pm.addPass(mlir::createCSEPass());
 
@@ -104,11 +107,11 @@ llvm::LogicalResult lower(ModuleOp& module, int capability) {
   pm.addPass(mlir::createCanonicalizerPass());
   pm.addPass(mlir::createCSEPass());
 
-  //============================================================================
-  // Lower GPUModuleOp to CUBIN
-  //============================================================================
-  llvm::initAllTargets();
 
+  //============================================================================
+  // Lower GPU to LLVM
+  //============================================================================
+  // Register LLVM translation interfaces
   DialectRegistry registry;
   mlir::registerAllExtensions(registry);
   mlir::registerConvertMemRefToLLVMInterface(registry);
@@ -117,36 +120,51 @@ llvm::LogicalResult lower(ModuleOp& module, int capability) {
   mlir::registerGPUDialectTranslation(registry);
   mlir::registerNVVMDialectTranslation(registry);
   mlir::registerLLVMDialectTranslation(registry);
+  mlir::NVVM::registerNVVMTargetInterfaceExternalModels(registry);
   mlir::gpu::registerOffloadingLLVMTranslationInterfaceExternalModels(registry);
   context.appendDialectRegistry(registry);
 
+  // Lower SCF -> CF
   pm.addPass(mlir::createSCFToControlFlowPass());
   pm.addPass(mlir::createCanonicalizerPass());
   pm.addPass(mlir::createCSEPass());
 
+  // Lower GPUModuleOp to LLVM
   auto& kernelPm = pm.nest<gpu::GPUModuleOp>();
   kernelPm.addPass(mlir::createConvertGpuOpsToNVVMOps());
   kernelPm.addPass(mlir::createConvertNVVMToLLVMPass());
   kernelPm.addPass(mlir::LLVM::createNVVMOptimizeForTargetPass());
 
-  pm.addPass(mlir::toy::createGpuModuleToCubinPass());
+  // Re-create gpu.launch_func to conform with changed kernel function signature
+  pm.addPass(mlir::createGpuToLLVMConversionPass());
+  pm.addPass(mlir::createReconcileUnrealizedCastsPass());
 
+  //============================================================================
+  // Lower GPUModuleOp to CUBIN
+  //============================================================================
+  mlir::GpuNVVMAttachTargetOptions nvvmTargetOptions;
+  nvvmTargetOptions.chip = cuda::getArch();
+  nvvmTargetOptions.features = cuda::getFeatures();
+  pm.addPass(mlir::createGpuNVVMAttachTarget(nvvmTargetOptions));
+
+  mlir::GpuModuleToBinaryPassOptions binPassOptions;
+  binPassOptions.compilationTarget = "bin";
+  pm.addPass(mlir::createGpuModuleToBinaryPass(binPassOptions));
   pm.addPass(mlir::createCanonicalizerPass());
   pm.addPass(mlir::createCSEPass());
 
-  // Apply the pass
+
+  // Apply passes
   if (failed(pm.run(module))) {
     llvm::errs() << "Pass execution failed\n";
     return failure();
   }
 
+
   //============================================================================
-  // Lower host code
+  // Lower host code -> LLVM -> LLVM IR -> Object file
   //============================================================================
   pm.clear();
-  pm.addPass(mlir::createConvertToLLVMPass());
-  pm.addPass(mlir::createGpuToLLVMConversionPass());
-  pm.addPass(mlir::createReconcileUnrealizedCastsPass());
   pm.addPass(mlir::createCanonicalizerPass());
   pm.addPass(mlir::createCSEPass());
   if (failed(pm.run(module))) {
@@ -170,6 +188,6 @@ llvm::LogicalResult lower(ModuleOp& module, int capability) {
   return success();
 }
 
-} // namespace middleend
+} // namespace backend
 } // namespace compiler
 } // namespace toy

@@ -10,7 +10,7 @@ namespace toy {
 namespace compiler {
 namespace backend {
 
-llvm::LogicalResult lower(mlir::ModuleOp& module, int capability);
+llvm::LogicalResult lower(mlir::ModuleOp& module);
 
 } // namespace backend
 } // namespace compiler

@@ -30,7 +30,6 @@
 
 // Toy Compiler headers
 #include "frontend/toy_dialect.h"
-#include "common/passes.h"
 #include "passes.h"
 #include "middleend.h"
 

@@ -22,9 +22,7 @@ message(STATUS "CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 include_directories(.)
-
-# common
-add_subdirectory(common)
+include_directories(${CUDA_ROOT}/include)
 
 # frontend
 add_subdirectory(frontend)
@@ -38,11 +36,21 @@ add_subdirectory(backend)
 # Find the CUDA runtime library
 find_library(CUDA_RUNTIME_LIBRARY
   NAMES cudart
-  PATHS ${CUDA_DIR}/lib64
+  PATHS ${CUDA_ROOT}/lib64
   PATH_SUFFIXES lib
   NO_DEFAULT_PATH
 )
 message(STATUS "CUDA_RUNTIME_LIBRARY: ${CUDA_RUNTIME_LIBRARY}")
+
+# test
+add_executable(test
+  test.cpp
+)
+target_compile_options(test PRIVATE -fno-rtti -g -O0)
+target_link_libraries(test PRIVATE
+  cuda_utils
+  ${CUDA_RUNTIME_LIBRARY}
+)
 
 # main
 add_executable(main 
@@ -53,7 +61,6 @@ target_link_libraries(main PRIVATE
   frontend
   middleend
   backend
-  common
   MLIRIR
   MLIRDialect
   MLIRRegisterAllExtensions

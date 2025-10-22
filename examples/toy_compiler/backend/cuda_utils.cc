@@ -2,7 +2,6 @@
 #include <iostream>
 #include <filesystem>
 
-#include <cuda.h>
 #include <cuda_runtime.h>
 #include "utils.h"
 #include "cuda_utils.h"
@@ -11,63 +10,73 @@ namespace fs = std::filesystem;
 
 namespace cuda {
 
-status::Result<int> getComputeCapability() {
+status::Result<cudaDeviceProp> getDeviceProperties() {
   int dev = 0;
+  std::string defaultErrMsg = "Failed to get Device Properties";
   cudaError_t err = cudaSetDevice(dev);
   if (err != cudaError::cudaSuccess) {
+    std::string errMsg = cudaGetErrorString(err);
     return {
-      0,
-      cudaGetErrorString(err)
+      {},
+      errMsg.empty() ? defaultErrMsg : errMsg
     };
   }
 
   cudaDeviceProp deviceProp;
   err = cudaGetDeviceProperties(&deviceProp, dev);
   if (err != cudaError::cudaSuccess) {
+    std::string errMsg = cudaGetErrorString(err);
     return {
-      0,
-      cudaGetErrorString(err)
+      {},
+      errMsg.empty() ? defaultErrMsg : errMsg
     };
   }
 
-  return deviceProp.major + deviceProp.minor;
+  return std::move(deviceProp);
 }
 
-status::Result<int> ParseCudaArch(const std::string& arch_str) {
-  auto prefixPos = arch_str.find("sm_");
-  if (prefixPos == std::string::npos) {
+status::Result<std::string> getCudaRoot() {
+  fs::path cudaRoot = toy::utils::getStrEnv("CUDA_ROOT");
+  if (cudaRoot.empty()) {
     return {
-      0,
-      "Could not parse cuda architecture prefix (expected sm_)"
+      "",
+      "${CUDA_ROOT} is unset!"
     };
   }
 
-  return std::stoi(arch_str.substr(3, arch_str.size() - 3));
-}
-
-status::Result<std::string> getCudaDir() {
-  fs::path cudaDir = toy::utils::getStrEnv("CUDA_DIR");
-  if (cudaDir.empty()) {
+  if (!fs::exists(cudaRoot)) {
     return {
       "",
-      "${CUDA_DIR} is unset!"
-    };
-  }
-
-  if (!fs::exists(cudaDir)) {
-    return {
-      "",
-      std::string("${CUDA_DIR} ").append(cudaDir.string())
+      std::string("${CUDA_ROOT} ").append(cudaRoot.string())
                                  .append(" does not exist!")
     };
   }
 
-  return cudaDir.string();
+  return cudaRoot.string();
 }
 
-std::string getPtxasPath() {
-  auto cudaDir = getCudaDir();
-  return cudaDir.value() + "/bin/ptxas";
+int getComputeCapability() {
+  auto devPropRes = getDeviceProperties();
+  if (!devPropRes.ok()) {
+    std::cerr << devPropRes.error_message() << "\n";
+    std::abort();
+  }
+
+  auto devProp = devPropRes.value();
+  auto cc = devProp.major * 10 + devProp.minor;
+  if (cc < 75) {
+    std::cerr << "Unsupported GPU with Compute Capability " << cc << "\n";
+    std::abort();
+  }
+  std::cout << "GPU Compute Capability: " << cc << "\n";
+
+  return devProp.major * 10 + devProp.minor;
+}
+
+static const int kComputeCapability = getComputeCapability();
+
+std::string getArch() {
+  return std::string("sm_").append(std::to_string(kComputeCapability));
 }
 
 std::string getSupportedPtxVersion() {
@@ -90,9 +99,55 @@ std::string getSupportedPtxVersion() {
   return ptxVersion;
 }
 
-std::string getLibdevice() {
-  auto cudaDir = std::getenv("CUDA_DIR");
-  return std::string(cudaDir).append("/nvvm/libdevice/libdevice.10.bc");
+std::string getFeatures() {
+  std::string ptxVersion = getSupportedPtxVersion();
+  
+  return std::string("+ptx").append(ptxVersion);
 }
+
+std::string getPtxasPath() {
+  auto cudaRoot = getCudaRoot();
+  return cudaRoot.value() + "/bin/ptxas";
+}
+
+std::string getLibdevice() {
+  auto cudaRoot = getCudaRoot();
+  return std::string(cudaRoot.value()).append("/nvvm/libdevice/libdevice.10.bc");
+}
+
+status::Result<int> ParseCudaArch(const std::string& arch_str) {
+  auto prefixPos = arch_str.find("sm_");
+  if (prefixPos == std::string::npos) {
+    return {
+      0,
+      "Could not parse cuda architecture prefix (expected sm_)"
+    };
+  }
+
+  return std::stoi(arch_str.substr(3, arch_str.size() - 3));
+}
+
+// Ensure that CUDA_ROOT, ptxas, and libdevice exist
+static bool __cuda_check = []() -> bool {
+  auto cudaRootRes = getCudaRoot();
+  if (!cudaRootRes.ok()) {
+    std::cerr << cudaRootRes.error_message() << "\n";
+    std::abort();
+  }
+
+  auto ptxasPath = getPtxasPath();
+  if (!fs::exists(ptxasPath)) {
+    std::cerr << ptxasPath << " does not exists!\n";
+    std::abort();
+  }
+
+  std::string libdevice = getLibdevice();
+  if (!fs::exists(libdevice)) {
+    std::cerr << libdevice << " does not exists!\n";
+    std::abort();
+  }
+
+  return true;
+}();
 
 } // namespace cuda
