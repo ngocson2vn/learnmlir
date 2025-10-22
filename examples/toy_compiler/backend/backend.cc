@@ -19,10 +19,14 @@
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
 #include "mlir/Conversion/SCFToGPU/SCFToGPU.h"
 #include "mlir/Conversion/SCFToGPU/SCFToGPUPass.h"
+#include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
+#include "mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h"
+#include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h"
 #include "mlir/Conversion/GPUToNVVM/GPUToNVVMPass.h"
 #include "mlir/Conversion/GPUCommon/GPUCommonPass.h"
 #include "mlir/Conversion/NVVMToLLVM/NVVMToLLVM.h"
 #include "mlir/Conversion/ConvertToLLVM/ToLLVMPass.h"
+#include "mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h"
 
 #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Dialect/GPU/GPUToLLVMIRTranslation.h"
@@ -38,6 +42,7 @@
 #include "llvm_utils.h"
 #include "cuda_utils.h"
 #include "nvidia_backend.h"
+#include "common/passes.h"
 
 using namespace mlir;
 
@@ -45,7 +50,7 @@ namespace toy {
 namespace compiler {
 namespace backend {
 
-llvm::LogicalResult lower(mlir::ModuleOp& module, int capability) {
+llvm::LogicalResult lower(ModuleOp& module, int capability) {
   auto& context = *module.getContext();
 
   // Load necessary dialects
@@ -56,7 +61,7 @@ llvm::LogicalResult lower(mlir::ModuleOp& module, int capability) {
   std::string errorMessage;
 
   // lowering
-  auto output = mlir::openOutputFile("lowering.mlir", &errorMessage);
+  auto output = mlir::openOutputFile("lowering_backend.mlir", &errorMessage);
   if (!output) {
     llvm::errs() << errorMessage << "\n";
     return failure();
@@ -81,10 +86,10 @@ llvm::LogicalResult lower(mlir::ModuleOp& module, int capability) {
   // To GPU
   //============================================================================
   mlir::SmallVector<int64_t> tileSizes{128};
-  pm.addNestedPass<func::FuncOp>(mlir::toy::createTileLoopsPass(tileSizes));
-
+  pm.addNestedPass<func::FuncOp>(::mlir::toy::createTileLoopsPass(tileSizes));
   pm.addNestedPass<func::FuncOp>(mlir::createGpuMapParallelLoopsPass());
   pm.addPass(mlir::createConvertParallelLoopToGpuPass());
+  pm.addPass(mlir::toy::createLowerMemRefToLLVMPass());
   pm.addPass(mlir::createCanonicalizerPass());
   pm.addPass(mlir::createCSEPass());
 
@@ -102,8 +107,12 @@ llvm::LogicalResult lower(mlir::ModuleOp& module, int capability) {
   //============================================================================
   // Lower GPUModuleOp to CUBIN
   //============================================================================
+  llvm::initAllTargets();
+
   DialectRegistry registry;
   mlir::registerAllExtensions(registry);
+  mlir::registerConvertMemRefToLLVMInterface(registry);
+  mlir::registerConvertFuncToLLVMInterface(registry);
   mlir::registerBuiltinDialectTranslation(registry);
   mlir::registerGPUDialectTranslation(registry);
   mlir::registerNVVMDialectTranslation(registry);
@@ -115,15 +124,15 @@ llvm::LogicalResult lower(mlir::ModuleOp& module, int capability) {
   pm.addPass(mlir::createCanonicalizerPass());
   pm.addPass(mlir::createCSEPass());
 
-  auto& kernelPm = pm.nest<::mlir::gpu::GPUModuleOp>();
+  auto& kernelPm = pm.nest<gpu::GPUModuleOp>();
   kernelPm.addPass(mlir::createConvertGpuOpsToNVVMOps());
   kernelPm.addPass(mlir::createConvertNVVMToLLVMPass());
   kernelPm.addPass(mlir::LLVM::createNVVMOptimizeForTargetPass());
 
+  pm.addPass(mlir::toy::createGpuModuleToCubinPass());
+
   pm.addPass(mlir::createCanonicalizerPass());
   pm.addPass(mlir::createCSEPass());
-
-  pm.addPass(mlir::toy::createGpuModuleToCubinPass());
 
   // Apply the pass
   if (failed(pm.run(module))) {
@@ -137,6 +146,7 @@ llvm::LogicalResult lower(mlir::ModuleOp& module, int capability) {
   pm.clear();
   pm.addPass(mlir::createConvertToLLVMPass());
   pm.addPass(mlir::createGpuToLLVMConversionPass());
+  pm.addPass(mlir::createReconcileUnrealizedCastsPass());
   pm.addPass(mlir::createCanonicalizerPass());
   pm.addPass(mlir::createCSEPass());
   if (failed(pm.run(module))) {
@@ -155,7 +165,7 @@ llvm::LogicalResult lower(mlir::ModuleOp& module, int capability) {
     return failure();
   }
 
-
+  llvmMod->print(output->os(), nullptr);
 
   return success();
 }

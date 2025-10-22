@@ -62,15 +62,50 @@ def Toy_FuncOp : Op<Toy_Dialect, "func", [
   }];
 }
 
+// def Toy_ConstantOp : Op<Toy_Dialect, "constant"> {
+//   // Provide a summary and description for this operation. This can be used to
+//   // auto-generate documentation of the operations within our dialect.
+//   let summary = "constant";
+//   let description = [{
+//     Constant operation turns a literal into an SSA value. The data is attached
+//     to the operation as an attribute. For example:
+
+//     ```mlir
+//       %0 = toy.constant 42 : i64
+//     ```
+//   }];
+
+//   // The constant operation takes an attribute as the only input.
+//   let arguments = (ins AnyTypeOf<[I64, F64]>:$value);
+
+//   // The constant operation returns a single value of TensorType.
+//   let results = (outs AnyTypeOf<[I64, F64]>:$result);
+
+//   let assemblyFormat = "$value `:` type($value) attr-dict `->` type($result)";
+
+//   let builders = [
+//     OpBuilder<(ins "int64_t":$value)>,
+
+//     OpBuilder<(ins "double":$value)>
+//   ];
+// }
+
 def Toy_AddOp : Op<Toy_Dialect, "add"> {
   let summary = "Addition operation for the toy dialect";
   let description = [{
     This operation computes the sum of two tensors element-wise.
   }];
-  let arguments = (ins F64Tensor:$lhs, F64Tensor:$rhs);
+  let arguments = (ins F64Tensor:$lhs, F64Tensor:$rhs, I64:$size);
   let results = (outs F64Tensor:$result);
 
-  let assemblyFormat = "$lhs `,` $rhs `:` type($lhs) `,` type($rhs) attr-dict `->` type($result)";
+  let assemblyFormat = "$lhs `,` $rhs `,` $size `:` type($lhs) `,` type($rhs) `,` type($size) attr-dict `->` type($result)";
+
+  let builders = [
+    // OpBuilder<(ins "Value":$lhs, "Value":$rhs, "int64_t":$size)>,
+    OpBuilder<(ins "Value":$lhs, "Value":$rhs, "int64_t":$size), [{
+      build($_builder, $_state, lhs, rhs, size);
+    }]>,
+  ];
 }
 
 def Toy_StoreOp : Op<Toy_Dialect, "store"> {

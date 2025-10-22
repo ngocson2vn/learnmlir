@@ -215,6 +215,13 @@ private:
       return std::make_unique<PrintExprAST>(std::move(loc), std::move(args[0]));
     }
 
+    if (name == "add") {
+      if (args.size() != 3)
+        return parseError<ExprAST>("<3 args>", "as arguments to add()");
+      
+      return std::make_unique<AddExprAST>(std::move(loc), std::move(args));
+    }
+
     // Call to a user-defined function
     return std::make_unique<CallExprAST>(std::move(loc), name, std::move(args));
   }
@@ -297,11 +304,25 @@ private:
   /// type ::= < shape_list >
   /// shape_list ::= num | num , shape_list
   std::unique_ptr<VarType> parseType() {
-    if (lexer.getCurToken() != '<')
-      return parseError<VarType>("<", "to begin type");
-    lexer.getNextToken(); // eat <
+    if (lexer.getCurToken() != tok_identifier)
+      return parseError<VarType>("type identifier", "to begin type");
 
     auto type = std::make_unique<VarType>();
+    auto id = lexer.getId();
+    if (id == "tensor") {
+      type->type = Type::tensor;
+    } else if (id == "int") {
+      type->type = Type::integer;
+    } else {
+      return parseError<VarType>("type identifier", "tensor or int");
+    }
+
+    lexer.consume(tok_identifier);
+
+    if (lexer.getCurToken() != '<')
+      return type;
+
+    lexer.getNextToken(); // eat <
 
     while (lexer.getCurToken() == tok_number) {
       type->shape.push_back(lexer.getValue());
@@ -355,14 +376,13 @@ private:
     lexer.getNextToken(); // eat id
 
     std::unique_ptr<VarType> type; // Type is optional, it can be inferred
-    if (lexer.getCurToken() == '<') {
+    if (lexer.getCurToken() == ':') {
+      lexer.getNextToken(); // eat ':'
       type = parseType();
-      if (!type)
-        return nullptr;
     }
 
     if (!type)
-      type = std::make_unique<VarType>();
+      return parseError<VarDeclExprAST>("argument", "must have a type");
 
     return std::make_unique<VarDeclExprAST>(std::move(loc), std::move(id),
                                             std::move(*type), nullptr);

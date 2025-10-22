@@ -204,11 +204,23 @@ private:
       return nullptr;
     }
 
+    int64_t size = -1;
+    auto lhsType = cast<mlir::RankedTensorType>(lhs.getType());
+    auto rhsType = cast<mlir::RankedTensorType>(rhs.getType());
+    if (lhsType.hasStaticShape() && rhsType.hasStaticShape()) {
+      assert(lhsType.getNumElements() == rhsType.getNumElements() && "argument types mismatch");
+      size = lhsType.getNumElements();
+    }
+
     // Derive the operation name from the binary operator. At the moment we only
     // support '+' and '*'.
     switch (binop.getOp()) {
     case '+':
-      return builder.create<AddOp>(location, lhs.getType(), lhs, rhs);
+      if (size > 0) {
+        // auto sizeVal = builder.create<ConstantOp>(location, size);
+        return builder.create<AddOp>(location, lhs, rhs, size);
+      }
+      emitError(location, "binary operator '") << binop.getOp() << "'" << " argument types mismatch";
     default:
       emitError(location, "invalid binary operator '") << binop.getOp() << "'";
       return nullptr; 
@@ -263,6 +275,22 @@ private:
     return nullptr;
   }
 
+  /// Emit a add expression. It emits specific operations for two builtins:
+  /// add(x, y, n) and print(x).
+  mlir::Value mlirGen(AddExprAST &call) {
+    SmallVector<mlir::Value> argVals;
+    for (auto& arg : call.getArgs()) {
+      auto val = mlirGen(*arg);
+      if (!val)
+        return nullptr;
+
+      argVals.push_back(val);
+    }
+
+    auto v = builder.create<AddOp>(loc(call.loc()), mlir::TypeRange{argVals[0].getType()}, argVals);
+    return v;
+  }
+
   /// Recursive helper function to accumulate the data that compose an array
   /// literal. It flattens the nested structure in the supplied vector. For
   /// example with this array:
@@ -291,6 +319,8 @@ private:
       return mlirGen(cast<AssignExprAST>(expr));
     case ExprAST::Expr_BinOp:
       return mlirGen(cast<BinaryExprAST>(expr));
+    case ExprAST::Expr_Add:
+      return mlirGen(cast<AddExprAST>(expr));
     case ExprAST::Expr_Literal:
       return mlirGen(cast<LiteralExprAST>(expr));
     case ExprAST::Expr_Num:
@@ -362,7 +392,17 @@ private:
 
   /// Build an MLIR type from a Toy AST variable type (forward to the generic
   /// getType above).
-  mlir::Type getType(const VarType &type) { return getType(type.shape); }
+  mlir::Type getType(const VarType &type) { 
+    switch (type.type) {
+      case Type::tensor:
+        return getType(type.shape);
+      case Type::integer:
+        return builder.getI64Type();
+      default:
+        llvm::errs() << "Unknown type\n";
+        return nullptr;
+    }
+  }
 };
 
 /// Returns a Toy AST resulting from parsing the file or a nullptr on error.

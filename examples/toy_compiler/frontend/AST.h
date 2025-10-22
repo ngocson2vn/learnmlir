@@ -27,8 +27,14 @@ namespace toy {
 namespace compiler {
 namespace frontend {
 
+enum class Type {
+  tensor = 1,
+  integer = 2,
+};
+
 /// A variable type with shape information.
 struct VarType {
+  Type type;
   std::vector<int64_t> shape;
 };
 
@@ -43,8 +49,9 @@ public:
     Expr_Var,
     Expr_VarAssign,
     Expr_BinOp,
-    Expr_Call,
+    Expr_Add,
     Expr_Print,
+    Expr_Call,
   };
 
   ExprAST(ExprASTKind kind, Location location)
@@ -213,6 +220,20 @@ public:
 
   /// LLVM style RTTI
   static bool classof(const ExprAST *c) { return c->getKind() == Expr_Print; }
+};
+
+/// Expression class for builtin print calls.
+class AddExprAST : public ExprAST {
+  std::vector<std::unique_ptr<ExprAST>> args;
+
+public:
+  AddExprAST(Location loc, std::vector<std::unique_ptr<ExprAST>> args)
+      : ExprAST(Expr_Add, std::move(loc)), args(std::move(args)) {}
+
+  std::vector<std::unique_ptr<ExprAST>>& getArgs() { return args; }
+
+  /// LLVM style RTTI
+  static bool classof(const ExprAST *c) { return c->getKind() == Expr_Add; }
 };
 
 /// This class represents the "prototype" for a function, which captures its

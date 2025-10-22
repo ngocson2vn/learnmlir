@@ -109,7 +109,7 @@ bool runOnFunction(llvm::Function &F) {
 
 namespace llvm {
 
-void initTargets() {
+void initAllTargets() {
   static std::once_flag init_flag;
   std::call_once(init_flag, []() {
     llvm::InitializeAllTargetInfos();

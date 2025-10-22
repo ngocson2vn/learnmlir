@@ -25,8 +25,12 @@
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Export.h"
 
+#include "mlir/Support/FileUtilities.h"
+#include "llvm/Support/ToolOutputFile.h"
+
 // Toy Compiler headers
 #include "frontend/toy_dialect.h"
+#include "common/passes.h"
 #include "passes.h"
 #include "middleend.h"
 
@@ -45,9 +49,34 @@ LogicalResult lower(mlir::ModuleOp& module) {
   context.getOrLoadDialect<arith::ArithDialect>();
   context.getOrLoadDialect<memref::MemRefDialect>();
   context.getOrLoadDialect<linalg::LinalgDialect>();
+  context.getOrLoadDialect<scf::SCFDialect>();
 
   // Set up the pass manager
+  context.disableMultithreading();
   PassManager pm(&context);
+  std::string errorMessage;
+
+  // lowering
+  auto output = mlir::openOutputFile("lowering_middleend.mlir", &errorMessage);
+  if (!output) {
+    llvm::errs() << errorMessage << "\n";
+    return failure();
+  }
+
+  mlir::OpPrintingFlags printFlag{};
+  pm.enableIRPrinting(
+    /*shouldPrintBeforePass=*/[](mlir::Pass* p, mlir::Operation* op) {
+      return false;
+    },
+    /*shouldPrintAfterPass=*/[](mlir::Pass* p, mlir::Operation * op) {
+      return true;
+    },
+    /*printModuleScope=*/true, 
+    /*printAfterOnlyOnChange=*/true,
+    /*printAfterOnlyOnFailure=*/false, 
+    output->os(), printFlag
+  );
+  output->keep();
 
   // Toy to Std
   pm.addPass(mlir::toy::createConvertToyToStdPass());
@@ -56,11 +85,6 @@ LogicalResult lower(mlir::ModuleOp& module) {
 
   // To MemRef
   pm.addPass(mlir::toy::createConvertTensorToMemRefPass());
-  pm.addPass(mlir::createCanonicalizerPass());
-  pm.addPass(mlir::createCSEPass());
-
-  // To Loops
-  pm.addPass(mlir::createConvertLinalgToParallelLoopsPass());
   pm.addPass(mlir::createCanonicalizerPass());
   pm.addPass(mlir::createCSEPass());
 

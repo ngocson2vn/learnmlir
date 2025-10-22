@@ -783,3 +783,17 @@ void ConversionPatternRewriter::startOpModification(Operation *op) {
   impl->appendRewrite<ModifyOperationRewrite>(op);
 }
 ```
+
+# Load Passes Dependent Dialects
+```C++
+// llvm-project/mlir/lib/Pass/Pass.cpp
+// Register all dialects for the current pipeline.
+LDBG(2) << "Registering dependent dialects for pipeline";
+DialectRegistry dependentDialects;
+getDependentDialects(dependentDialects);
+context->appendDialectRegistry(dependentDialects);
+for (StringRef name : dependentDialects.getDialectNames()) {
+  LDBG(2) << "Loading dialect: " << name;
+  context->getOrLoadDialect(name);
+}
+```

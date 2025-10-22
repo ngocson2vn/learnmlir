@@ -31,6 +31,7 @@ struct Location {
 
 // List of Token returned by the lexer.
 enum Token : int {
+  tok_colon = ':',
   tok_semicolon = ';',
   tok_parenthese_open = '(',
   tok_parenthese_close = ')',

@@ -22,6 +22,13 @@ def TileLoopsPass : Pass<"tile-loops", "func::FuncOp"> {
 }
 
 
+def LowerMemRefToLLVMPass : Pass<"lower-memref-to-llvm", "ModuleOp"> {
+  let summary = "Pass to lower memref to llvm";
+
+  let constructor = "createLowerMemRefToLLVMPass()";
+}
+
+
 def GpuModuleToCubinPass : Pass<"gpu-to-cubin", "ModuleOp"> {
   let summary = "Pass to lower GPU Module cubin";
 

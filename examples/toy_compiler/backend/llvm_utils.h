@@ -11,7 +11,7 @@ class Module;
 class OptimizationLevel;
 class Triple;
 
-void initTargets();
+void initAllTargets();
 
 LogicalResult linkExternLibs(llvm::Module *dstMod, const std::vector<std::string> &paths);
 

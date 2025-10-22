@@ -23,6 +23,9 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 include_directories(.)
 
+# common
+add_subdirectory(common)
+
 # frontend
 add_subdirectory(frontend)
 
@@ -50,6 +53,7 @@ target_link_libraries(main PRIVATE
   frontend
   middleend
   backend
+  common
   MLIRIR
   MLIRDialect
   MLIRRegisterAllExtensions

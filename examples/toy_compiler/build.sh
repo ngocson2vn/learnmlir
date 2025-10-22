@@ -19,6 +19,9 @@ if [ "${now_hash}" != "${pre_hash}" ]; then
   echo "Generate ninja build file"
   echo "==================================================="
   cd ${ROOT_DIR}/build
+
+  # -DCMAKE_BUILD_TYPE=Debug | Release \
+
   cmake -G Ninja .. \
     -DCMAKE_BUILD_TYPE=Debug \
     -DLLVM_ENABLE_PROJECTS="mlir;compiler-rt" \

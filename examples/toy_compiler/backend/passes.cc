@@ -1,9 +1,14 @@
 #include <fstream>
 #include <filesystem>
 
+#include "mlir/IR/BuiltinDialect.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Dialect/GPU/IR/GPUDialect.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/LLVMIR/NVVMDialect.h"
+#include "mlir/Target/LLVMIR/Dialect/GPU/GPUToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Export.h"
 
 #include "mlir/IR/Builders.h"
@@ -11,6 +16,8 @@
 #include "mlir/Transforms/DialectConversion.h"
 
 #include "llvm/Passes/OptimizationLevel.h"
+#include "llvm/Support/Debug.h"
+#define DEBUG_TYPE "backend-passes"
 
 #include "passes.h"
 #include "utils.h"
@@ -102,8 +109,6 @@ struct GPUModuleOpPattern : public mlir::OpConversionPattern<gpu::GPUModuleOp> {
 
 class GpuModuleToCubinPass : public mlir::toy::impl::GpuModuleToCubinPassBase<GpuModuleToCubinPass> {
   void runOnOperation() override {
-    llvm::initTargets();
-
     auto context = &getContext();
     auto module = getOperation();
 
@@ -123,9 +128,9 @@ class GpuModuleToCubinPass : public mlir::toy::impl::GpuModuleToCubinPassBase<Gp
   }
 };
 
-}
+} // namespace
 
-std::unique_ptr<mlir::OperationPass<mlir::ModuleOp>> 
+std::unique_ptr<mlir::OperationPass<ModuleOp>> 
 mlir::toy::createGpuModuleToCubinPass() {
   return std::make_unique<GpuModuleToCubinPass>();
 }

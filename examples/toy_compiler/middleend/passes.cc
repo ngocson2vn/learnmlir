@@ -5,12 +5,13 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
 
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 
 #include "llvm/Support/Debug.h"
-#define DEBUG_TYPE "passes"
+#define DEBUG_TYPE "middleend-passes"
 
 #include "frontend/toy_dialect.h"
 
@@ -86,14 +87,13 @@ struct ConvertToyToStdPass : public toy::impl::ConvertToyToStdPassBase<ConvertTo
 // Step 1: Define the TypeConverter
 struct TensorToMemRefConverter : public TypeConverter {
   TensorToMemRefConverter() {
-    // Map tensor to memref
-    addConversion([](TensorType tensor) -> MemRefType {
-      auto rankedTensor = dyn_cast<RankedTensorType>(tensor);
-      return MemRefType::get(rankedTensor.getShape(), rankedTensor.getElementType());
-    });
+    addConversion([](Type srcType) -> Type {
+      if (auto rankedTensor = dyn_cast<RankedTensorType>(srcType)) {
+        return MemRefType::get(rankedTensor.getShape(), rankedTensor.getElementType());
+      }
 
-    // Allow memref types to pass through unchanged
-    addConversion([](MemRefType memref) { return memref; });
+      return srcType;
+    });
 
     // Register source materialization: memref<?xf64> -> tensor<?xf64>
     addSourceMaterialization(
@@ -199,6 +199,7 @@ struct AddOpConverter : public OpConversionPattern<toy::AddOp> {
 
     auto xMemref = adaptor.getOperands()[0];
     auto yMemref = adaptor.getOperands()[1];
+    auto size = adaptor.getOperands()[2];
 
     auto userRange = op->getUsers();
     SmallVector<mlir::Operation*> userOps(userRange.begin(), userRange.end());
@@ -229,32 +230,46 @@ struct AddOpConverter : public OpConversionPattern<toy::AddOp> {
     auto outputMemrefType = cast<MemRefType>(getTypeConverter()->convertType(op.getResult().getType()));
     int64_t rank = outputMemrefType.getRank();
 
-    // Indexing maps: identity for x and output, empty or identity for y.
-    SmallVector<AffineExpr> exprs;
-    for (int64_t i = 0; i < rank; ++i) {
-      exprs.push_back(rewriter.getAffineDimExpr(i));
-    }
-    auto xIndexMap = AffineMap::get(rank, 0, exprs, rewriter.getContext());
-    auto yIndexMap = xIndexMap;
-    auto outputIndexMap = xIndexMap;
-    SmallVector<AffineMap> indexingMaps = {xIndexMap, yIndexMap, outputIndexMap};
+    // // Indexing maps: identity for x and output, empty or identity for y.
+    // SmallVector<AffineExpr> exprs;
+    // for (int64_t i = 0; i < rank; ++i) {
+    //   exprs.push_back(rewriter.getAffineDimExpr(i));
+    // }
+    // auto xIndexMap = AffineMap::get(rank, 0, exprs, rewriter.getContext());
+    // auto yIndexMap = xIndexMap;
+    // auto outputIndexMap = xIndexMap;
+    // SmallVector<AffineMap> indexingMaps = {xIndexMap, yIndexMap, outputIndexMap};
 
-    // Set iterator types: all parallel for element-wise operation.
-    SmallVector<utils::IteratorType> iteratorTypes(rank, utils::IteratorType::parallel);
+    // // Set iterator types: all parallel for element-wise operation.
+    // SmallVector<utils::IteratorType> iteratorTypes(rank, utils::IteratorType::parallel);
 
-    // Create linalg.generic operation with memref semantics.
-    auto linalgOp = rewriter.create<linalg::GenericOp>(
-      op.getLoc(),
-      /*resultTypes=*/TypeRange{}, // No tensor results; output is written to memref
-      /*inputs=*/ValueRange{xMemref, yMemref},
-      /*outputs=*/ValueRange{outputMemref},
-      /*indexingMaps=*/indexingMaps,
-      /*iteratorTypes=*/iteratorTypes,
-      [&](OpBuilder &nestedBuilder, Location loc, ValueRange args) {
-        Value xVal = args[0];
-        Value yVal = args[1];
+    // // Create linalg.generic operation with memref semantics.
+    // auto linalgOp = rewriter.create<linalg::GenericOp>(
+    //   op.getLoc(),
+    //   /*resultTypes=*/TypeRange{}, // No tensor results; output is written to memref
+    //   /*inputs=*/ValueRange{xMemref, yMemref},
+    //   /*outputs=*/ValueRange{outputMemref},
+    //   /*indexingMaps=*/indexingMaps,
+    //   /*iteratorTypes=*/iteratorTypes,
+    //   [&](OpBuilder &nestedBuilder, Location loc, ValueRange args) {
+    //     Value xVal = args[0];
+    //     Value yVal = args[1];
+    //     Value result = nestedBuilder.create<arith::AddFOp>(loc, xVal, yVal);
+    //     nestedBuilder.create<linalg::YieldOp>(loc, result);
+    //   }
+    // );
+
+    // Using SCF dialect
+    auto c0 = rewriter.create<arith::ConstantOp>(op.getLoc(), rewriter.getIndexType(), rewriter.getIndexAttr(0));
+    auto c1 = rewriter.create<arith::ConstantOp>(op.getLoc(), rewriter.getIndexType(), rewriter.getIndexAttr(1));
+    auto ub = rewriter.create<arith::IndexCastOp>(op.getLoc(), rewriter.getIndexType(), size);
+    rewriter.create<scf::ParallelOp>(op.getLoc(), ValueRange{c0}, ValueRange{ub}, ValueRange{c1}, ValueRange{},
+      [&](OpBuilder &nestedBuilder, Location loc, ValueRange ivs, ValueRange values) {
+        Value idx = ivs[0];
+        Value xVal = nestedBuilder.create<memref::LoadOp>(loc, xMemref, ValueRange{idx});
+        Value yVal = nestedBuilder.create<memref::LoadOp>(loc, yMemref, ValueRange{idx});
         Value result = nestedBuilder.create<arith::AddFOp>(loc, xVal, yVal);
-        nestedBuilder.create<linalg::YieldOp>(loc, result);
+        nestedBuilder.create<memref::StoreOp>(loc, result, outputMemref, ValueRange{idx});
       }
     );
 
@@ -338,7 +353,8 @@ struct ConvertTensorToMemRefPass : public toy::impl::ConvertTensorToMemRefPassBa
     //===========================================================================
     // 2. Convert toy ops
     //===========================================================================
-    target.addLegalDialect<linalg::LinalgDialect>();
+    // target.addLegalDialect<linalg::LinalgDialect>();
+    target.addLegalDialect<scf::SCFDialect>();
     target.addIllegalDialect<toy::ToyDialect>();
     for (auto& op : module.getBody()->getOperations()) {
       if (auto funcOp = dyn_cast<func::FuncOp>(&op)) {

@@ -19,6 +19,7 @@ namespace toy {
 std::unique_ptr<OperationPass<func::FuncOp>> createTileLoopsPass(
     ArrayRef<int64_t> tileSizes = {}, ArrayRef<int64_t> unrollFactors = {});
 
+std::unique_ptr<mlir::OperationPass<ModuleOp>> createLowerMemRefToLLVMPass();
 
 std::unique_ptr<mlir::OperationPass<ModuleOp>> createGpuModuleToCubinPass();
 
