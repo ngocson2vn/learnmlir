@@ -797,3 +797,6 @@ for (StringRef name : dependentDialects.getDialectNames()) {
   context->getOrLoadDialect(name);
 }
 ```
+
+# GPU Pipeline
+llvm-project/mlir/lib/Dialect/GPU/Pipelines/GPUToNVVMPipeline.cpp

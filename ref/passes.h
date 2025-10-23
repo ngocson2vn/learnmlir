@@ -1,17 +1,27 @@
-#ifndef TFEXT_TRANSFORMS_PASSES_H_
-#define TFEXT_TRANSFORMS_PASSES_H_
+#pragma once
 
 #include <memory>
-
-#include "mlir/IR/MLIRContext.h"
-#include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 
+
 namespace mlir {
-namespace tfext_kernel_gen {
-//
-} // namespace tfext_kernel_gen
 
-} // namespace mlir
+class ModuleOp;
 
-#endif // TFEXT_TRANSFORMS_PASSES_H_
+namespace func {
+class FuncOp;
+}
+
+namespace toy {
+
+// Creates a TileLoopsPass with tiles sizes provided through `tile_sizes`
+// and unroll factors provided through `unroll_factors`.
+std::unique_ptr<OperationPass<func::FuncOp>> createTileLoopsPass(
+    ArrayRef<int64_t> tileSizes = {}, ArrayRef<int64_t> unrollFactors = {});
+
+std::unique_ptr<mlir::OperationPass<ModuleOp>> createLowerMemRefToLLVMPass();
+
+std::unique_ptr<mlir::OperationPass<ModuleOp>> createGpuModuleToCubinPass();
+
+}  // namespace toy
+}  // namespace mlir

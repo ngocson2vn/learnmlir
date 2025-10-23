@@ -1,28 +1,40 @@
-#ifndef TFEXT_KERNEL_GEN_PASSES
-#define TFEXT_KERNEL_GEN_PASSES
-
 include "mlir/Pass/PassBase.td"
 
-def SonyDebugPass: Pass<"af-sony-debug", "gpu::GPUModuleOp"> {
-  let summary = "af-sony-debug";
-  let constructor = "mlir::tfext_kernel_gen::createSonyDebugPass()";
-  let dependentDialects = [
-    "mlir::arith::ArithDialect",
-    "mlir::scf::SCFDialect",
-    "mlir::memref::MemRefDialect",
-    "gpu::GPUDialect",
-    "mlir::LLVM::LLVMDialect",
+// Copy from tensorflow/compiler/xla/mlir_hlo/include/mlir-hlo/Transforms/passes.td
+// URL: https://github.com/tensorflow/tensorflow/blob/v2.12.0/tensorflow/compiler/xla/mlir_hlo/transforms/passes.td#L73
+def TileLoopsPass : Pass<"tile-loops", "func::FuncOp"> {
+  let summary = "Tiles parallel loops.";
+  let description = [{ The pass converts an `scf.parallel` loop into a nested,
+  "tiled", `scf.parallel` loop with 2 to 3 levels of nesting. The 3rd level of
+  nesting represents operation unrolling within a tile and is only applied on
+  simple memory access patterns (ones resulting from same shape, scalar, and/or
+  constant operands).}];
+  let constructor = "createTileLoopsPass()";
+  let options = [
+    ListOption<"tile_sizes_", "tile-sizes", "int64_t", "The size of the tile "
+               "in each dimension, expressed as the number of "
+               "`unroll_factors_` in that dimension.", "llvm::cl::ZeroOrMore">,
+    ListOption<"unroll_factors_", "unroll-factors", "int64_t", "The unroll "
+               "factor in each dimension, expressed as the number of elements "
+               "in that dimension.", "llvm::cl::ZeroOrMore">,
   ];
+  let dependentDialects = ["mlir::affine::AffineDialect"];
 }
 
-def AFBatchComputeFusionPass: Pass<"af-batch-compute-fusion", "func::FuncOp"> {
-  let summary = "af-batch-compute-fusion";
-  let constructor = "mlir::tfext_kernel_gen::createAFBatchComputeFusionPass()";
-  let dependentDialects = [
-    "mlir::scf::SCFDialect",
-    "mlir::arith::ArithDialect",
-    "mlir::memref::MemRefDialect",
-  ];
+
+def LowerMemRefToLLVMPass : Pass<"lower-memref-to-llvm", "ModuleOp"> {
+  let summary = "Pass to lower memref to llvm";
+
+  let constructor = "createLowerMemRefToLLVMPass()";
 }
 
-#endif // TFEXT_KERNEL_GEN_PASSES
+
+def GpuModuleToCubinPass : Pass<"gpu-to-cubin", "ModuleOp"> {
+  let summary = "Pass to lower GPU Module cubin";
+
+  let options = [
+    Option<"capability_", "capability", "int", /*default=*/"86", "GPU Compute Capability">
+  ];
+
+  let constructor = "createGpuModuleToCubinPass()";
+}
