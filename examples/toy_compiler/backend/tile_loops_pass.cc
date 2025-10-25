@@ -43,7 +43,6 @@ limitations under the License.
 namespace mlir {
 namespace toy {
 
-#define GEN_PASS_DECL_TILELOOPSPASS
 #define GEN_PASS_DEF_TILELOOPSPASS
 #include "backend/passes.h.inc"
 

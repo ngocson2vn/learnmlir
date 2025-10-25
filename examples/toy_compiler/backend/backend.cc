@@ -37,6 +37,8 @@
 
 #include "mlir/Support/FileUtilities.h"
 #include "llvm/Support/ToolOutputFile.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/CodeGen/CommandFlags.h"
 
 #include "passes.h"
 #include "backend.h"
@@ -48,6 +50,23 @@ using namespace mlir;
 namespace toy {
 namespace compiler {
 namespace backend {
+
+// Initialize
+bool __initialized = []() -> bool {
+  static std::once_flag init_flag;
+  std::call_once(init_flag, []() {
+    
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmParsers();
+    llvm::InitializeAllAsmPrinters();
+  });
+
+  static llvm::codegen::RegisterCodeGenFlags CGF;
+
+  return true;
+}();
 
 llvm::LogicalResult lower(ModuleOp& module) {
   auto& context = *module.getContext();
@@ -153,6 +172,13 @@ llvm::LogicalResult lower(ModuleOp& module) {
   pm.addPass(mlir::createCanonicalizerPass());
   pm.addPass(mlir::createCSEPass());
 
+  //============================================================================
+  // Lower host code
+  //============================================================================
+  pm.addPass(mlir::toy::createInjectRuntimeCtxPass());
+
+  mlir::toy::LowerLLVMToObjectPassOptions objectPassOptions;
+  pm.addPass(mlir::toy::createLowerLLVMToObjectPass(objectPassOptions));
 
   // Apply passes
   if (failed(pm.run(module))) {
@@ -160,30 +186,7 @@ llvm::LogicalResult lower(ModuleOp& module) {
     return failure();
   }
 
-
-  //============================================================================
-  // Lower host code -> LLVM -> LLVM IR -> Object file
-  //============================================================================
-  pm.clear();
-  pm.addPass(mlir::createCanonicalizerPass());
-  pm.addPass(mlir::createCSEPass());
-  if (failed(pm.run(module))) {
-    llvm::errs() << "Pass execution failed\n";
-    return failure();
-  }
-
-  llvm::outs() << "\nFinal MLIR module:\n";
-  module.dump();
-  llvm::outs() << "\n";
-
-  llvm::LLVMContext llvmContext;
-  auto llvmMod = mlir::translateModuleToLLVMIR(module, llvmContext);
-  if (!llvmMod) {
-    llvm::errs() << "Failed to translate module to LLVM IR\n";
-    return failure();
-  }
-
-  llvmMod->print(output->os(), nullptr);
+  module.print(output->os(), printFlag);
 
   return success();
 }

@@ -24,6 +24,17 @@ def TileLoopsPass : Pass<"tile-loops", "func::FuncOp"> {
 
 def LowerMemRefToLLVMPass : Pass<"lower-memref-to-llvm", "ModuleOp"> {
   let summary = "Pass to lower memref to llvm";
+}
 
-  let constructor = "createLowerMemRefToLLVMPass()";
+
+def InjectRuntimeCtxPass : Pass<"inject-runtime-ctx", "ModuleOp"> {
+  let summary = "Pass to inject runtime context";
+}
+
+
+def LowerLLVMToObjectPass : Pass<"lower-llvm-to-object", "ModuleOp"> {
+  let summary = "Pass to lower LLVM to Object file";
+  let options = [
+    Option<"objectFilePath", "object-file-path", "std::string", "\"output.o\"", "The output object file path">
+  ];
 }

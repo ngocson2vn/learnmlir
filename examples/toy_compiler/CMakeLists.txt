@@ -33,6 +33,9 @@ add_subdirectory(middleend)
 # backend
 add_subdirectory(backend)
 
+# runtime
+add_subdirectory(runtime)
+
 # Find the CUDA runtime library
 find_library(CUDA_RUNTIME_LIBRARY
   NAMES cudart
@@ -42,15 +45,14 @@ find_library(CUDA_RUNTIME_LIBRARY
 )
 message(STATUS "CUDA_RUNTIME_LIBRARY: ${CUDA_RUNTIME_LIBRARY}")
 
-# test
-add_executable(test
-  test.cpp
+# Find the CUDA driver library
+find_library(CUDA_DRIVER_LIBRARY
+  NAMES cuda
+  PATHS /usr/lib/x86_64-linux-gnu
+  PATH_SUFFIXES lib
+  NO_DEFAULT_PATH
 )
-target_compile_options(test PRIVATE -fno-rtti -g -O0)
-target_link_libraries(test PRIVATE
-  cuda_utils
-  ${CUDA_RUNTIME_LIBRARY}
-)
+message(STATUS "CUDA_DRIVER_LIBRARY: ${CUDA_DRIVER_LIBRARY}")
 
 # main
 add_executable(main 
@@ -89,4 +91,19 @@ target_link_libraries(main PRIVATE
   LLVMTableGen
   clang_rt.ubsan_standalone-x86_64
   ${CUDA_RUNTIME_LIBRARY}
+)
+
+
+#===---------------------------------------------------------===#
+#                  Build a test client binary
+#===---------------------------------------------------------===#
+add_executable(test
+  runtime/CudaRuntimeWrappers.cpp
+  test.cpp
+)
+target_compile_options(test PRIVATE -fno-rtti -g -O0)
+target_link_options(test PUBLIC -rdynamic)
+target_link_libraries(test PUBLIC
+  runtime
+  ${CUDA_DRIVER_LIBRARY}
 )

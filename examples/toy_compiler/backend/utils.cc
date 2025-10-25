@@ -15,6 +15,11 @@
 #include <algorithm>
 #include <filesystem>
 
+#include "mlir/Support/FileUtilities.h"
+
+#include "llvm/IR/Module.h"
+#include "llvm/Support/ToolOutputFile.h"
+
 #include "utils.h"
 
 namespace toy::utils {
@@ -52,7 +57,7 @@ std::vector<std::string> splitStringBySpace(const std::string& str) {
   return tokens;
 }
 
-std::string readFile(const std::string& filePath) {
+std::string readBinFile(const std::string& filePath) {
   std::string tmpOut;
   std::ifstream ifs(filePath, std::ios::in | std::ios::binary);
   ifs.seekg(0, ifs.end);
@@ -64,7 +69,7 @@ std::string readFile(const std::string& filePath) {
   return tmpOut;
 }
 
-bool writeFile(const std::string& data, const std::string& filePath) {
+bool writeBinFile(const std::string& data, const std::string& filePath) {
   std::ofstream ofs(filePath, std::ios::out | std::ios::binary);
   if (!ofs.is_open()) {
     return false;
@@ -174,6 +179,19 @@ std::string genTempFile() {
   std::string tempName = std::string("triton_temp.").append(std::to_string(epoch_time));
   std::filesystem::path tempPath = std::filesystem::temp_directory_path() / tempName;
   return tempPath.string();
+}
+
+void dumpLLVMIR(llvm::Module& llvmMod) {
+  std::string errorMessage;
+  auto fileName = llvmMod.getName().str() + ".mlir";
+  auto output = mlir::openOutputFile(fileName, &errorMessage);
+  if (!output) {
+    llvm::errs() << errorMessage << "\n";
+    return;
+  }
+  output->keep();
+
+  llvmMod.print(output->os(), nullptr);
 }
 
 } // namespace toy::utils

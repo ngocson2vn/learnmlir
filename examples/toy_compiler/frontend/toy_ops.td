@@ -20,9 +20,9 @@ def Toy_FuncOp : Op<Toy_Dialect, "func", [
 
     ```mlir
     toy.func @main() {
-      %0 = toy.constant dense<5.500000e+00> : tensor<f64>
-      %1 = toy.reshape(%0 : tensor<f64>) to tensor<2x2xf64>
-      toy.print %1 : tensor<2x2xf64>
+      %0 = toy.constant dense<5.500000e+00> : tensor<f32>
+      %1 = toy.reshape(%0 : tensor<f32>) to tensor<2x2xf32>
+      toy.print %1 : tensor<2x2xf32>
       toy.return
     }
     ```
@@ -76,10 +76,10 @@ def Toy_FuncOp : Op<Toy_Dialect, "func", [
 //   }];
 
 //   // The constant operation takes an attribute as the only input.
-//   let arguments = (ins AnyTypeOf<[I64, F64]>:$value);
+//   let arguments = (ins AnyTypeOf<[I64, F32]>:$value);
 
 //   // The constant operation returns a single value of TensorType.
-//   let results = (outs AnyTypeOf<[I64, F64]>:$result);
+//   let results = (outs AnyTypeOf<[I64, F32]>:$result);
 
 //   let assemblyFormat = "$value `:` type($value) attr-dict `->` type($result)";
 
@@ -95,8 +95,8 @@ def Toy_AddOp : Op<Toy_Dialect, "add"> {
   let description = [{
     This operation computes the sum of two tensors element-wise.
   }];
-  let arguments = (ins F64Tensor:$lhs, F64Tensor:$rhs, I64:$size);
-  let results = (outs F64Tensor:$result);
+  let arguments = (ins F32Tensor:$lhs, F32Tensor:$rhs, I64:$size);
+  let results = (outs F32Tensor:$result);
 
   let assemblyFormat = "$lhs `,` $rhs `,` $size `:` type($lhs) `,` type($rhs) `,` type($size) attr-dict `->` type($result)";
 
@@ -113,7 +113,7 @@ def Toy_StoreOp : Op<Toy_Dialect, "store"> {
   let description = [{
     This operation store source tensor into destination tensor.
   }];
-  let arguments = (ins F64Tensor:$src, F64Tensor:$dst);
+  let arguments = (ins F32Tensor:$src, F32Tensor:$dst);
 
   let assemblyFormat = "$src `,` $dst `:` type($src) `,` type($dst) attr-dict";
 }
@@ -127,16 +127,16 @@ def Toy_ReturnOp : Op<Toy_Dialect, "return", [HasParent<"FuncOp">, Terminator]> 
     the operation. For example:
 
     ```mlir
-      func.func @foo() -> tensor<2xf64> {
+      func.func @foo() -> tensor<2xf32> {
         ...
-        toy.return %0 : tensor<2xf64>
+        toy.return %0 : tensor<2xf32>
       }
     ```
   }];
 
   // The return operation takes an optional input operand to return. This
   // value must match the return type of the enclosing function.
-  let arguments = (ins Variadic<F64Tensor>:$input);
+  let arguments = (ins Variadic<F32Tensor>:$input);
 
   // The return operation only emits the input in the format if it is present.
   let assemblyFormat = "($input^ `:` type($input))? attr-dict ";

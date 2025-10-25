@@ -383,11 +383,11 @@ private:
     // If the shape is empty, then this type is unranked.
     if (shape.empty()) {
       SmallVector<int64_t> shape_vec = {mlir::ShapedType::kDynamic};
-      return mlir::RankedTensorType::get(shape_vec, builder.getF64Type());
+      return mlir::RankedTensorType::get(shape_vec, builder.getF32Type());
     }
 
     // Otherwise, we use the given shape.
-    return mlir::RankedTensorType::get(shape, builder.getF64Type());
+    return mlir::RankedTensorType::get(shape, builder.getF32Type());
   }
 
   /// Build an MLIR type from a Toy AST variable type (forward to the generic

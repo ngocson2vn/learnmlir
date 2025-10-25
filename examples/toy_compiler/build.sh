@@ -37,7 +37,7 @@ if [ "${now_hash}" != "${pre_hash}" ]; then
     -DCOMPILER_RT_BUILD_SANITIZERS=ON \
     -DCUDA_ROOT=/usr/local/cuda-12.4
 
-  cmake --build .
+  cmake --build . -v
 
   cd ${ROOT_DIR}/
   yes | echo ${now_hash} > ./.cmake.sha256
@@ -48,4 +48,4 @@ echo "==================================================="
 echo "Run ninja build"
 echo "==================================================="
 cd ${ROOT_DIR}/build
-cmake --build .
+cmake --build . -v
