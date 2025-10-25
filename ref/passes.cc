@@ -128,6 +128,42 @@ class GpuModuleToCubinPass : public mlir::toy::impl::GpuModuleToCubinPassBase<Gp
   }
 };
 
+class EmitCubinFilePass : public mlir::toy::impl::EmitCubinFilePassBase<EmitCubinFilePass> {
+ public:
+  EmitCubinFilePass() = default;
+
+  EmitCubinFilePass(const mlir::toy::EmitCubinFilePassOptions& options)
+    : EmitCubinFilePassBase(options) {}
+
+  void runOnOperation() override {
+    auto module = getOperation();
+    const std::string dstDir = destinationDir.empty() ? "./" : destinationDir.getValue() + "/";
+    std::vector<std::string> cubinFiles;
+    module.walk([&](gpu::BinaryOp binOp) {
+      std::string name = binOp.getSymName().str();
+      auto objects = binOp.getObjects();
+      if (auto objAttr = dyn_cast<gpu::ObjectAttr>(objects[0])) {
+        auto innerObj = objAttr.getObject();
+        std::string cubinStr(innerObj.data(), innerObj.size());
+        std::string cubinFile = dstDir + name + ".cubin";
+        bool ok = ::toy::utils::writeBinFile(cubinStr, cubinFile);
+        if (ok) {
+          cubinFiles.push_back(cubinFile);
+        }
+      }
+    });
+
+    if (cubinFiles.empty()) {
+      signalPassFailure();
+    }
+
+    llvm::outs() << "\nSuccessfully emitted cubin files:\n";
+    for (auto& f : cubinFiles) {
+      llvm::outs() << f << "\n";
+    }
+  }
+};
+
 } // namespace
 
 std::unique_ptr<mlir::OperationPass<ModuleOp>> 

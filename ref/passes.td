@@ -38,3 +38,11 @@ def GpuModuleToCubinPass : Pass<"gpu-to-cubin", "ModuleOp"> {
 
   let constructor = "createGpuModuleToCubinPass()";
 }
+
+
+def EmitCubinFilePass : Pass<"emit-cubin-file", "ModuleOp"> {
+  let summary = "Pass to extract cubin from gpu.binary op and save it to a file";
+  let options = [
+    Option<"destinationDir", "destination-dir", "std::string", "", "The destination directory">
+  ];
+}

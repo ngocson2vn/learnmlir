@@ -138,7 +138,9 @@
     "spanstream": "cpp",
     "stacktrace": "cpp",
     "syncstream": "cpp",
-    "stream_ref": "cpp"
+    "stream_ref": "cpp",
+    "__target_macros": "cpp",
+    "__functional_base": "cpp"
   },
   "mlir.tablegen_server_path": "/data00/home/son.nguyen/workspace/learnmlir/llvm-project/build/bin/tblgen-lsp-server"
 }

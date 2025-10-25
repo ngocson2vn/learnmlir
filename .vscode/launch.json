@@ -364,6 +364,22 @@
             "CUDA_VISIBLE_DEVICES": "0",
             "CUDA_DIR": "/usr/local/cuda-12.4"
         }
+    },
+    {
+        "name": "toy_compiler_test",
+        "type": "lldb-dap",
+        "request": "launch",
+        "console": "integratedTerminal",
+        "program": "${workspaceFolder}/examples/toy_compiler/build/test",
+        "cwd": "${workspaceFolder}/examples/toy_compiler",
+        "args": [
+            "./libkernel.so",
+            "15"
+        ],
+        "env": {
+            "CUDA_VISIBLE_DEVICES": "0",
+            "CUDA_DIR": "/usr/local/cuda-12.4"
+        }
     }
   ]
 }

@@ -3,3 +3,5 @@ build/
 *.ptx
 *.cubin
 *.mlir
+*.o
+*.so
