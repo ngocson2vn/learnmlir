@@ -800,3 +800,14 @@ for (StringRef name : dependentDialects.getDialectNames()) {
 
 # GPU Pipeline
 llvm-project/mlir/lib/Dialect/GPU/Pipelines/GPUToNVVMPipeline.cpp
+
+# Assembly Form
+```mlir
+module {
+  func.func @add_two_vectors(%arg0: tensor<?xf32>, %arg1: tensor<?xf32>, %arg2: tensor<?xf32>, %arg3: i64) {
+    %0 = toy.add %arg0, %arg1, %arg3 : tensor<?xf32>, tensor<?xf32>, i64 -> tensor<?xf32>
+    toy.store %0, %arg2 : tensor<?xf32>, tensor<?xf32>
+    return
+  }
+}
+```
