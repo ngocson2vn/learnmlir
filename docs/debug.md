@@ -2,7 +2,6 @@
 ```C++
 // main.cc
 #include "llvm/Support/Debug.h"
-#define DEBUG_TYPE "DEBUG"
 
 LLVM_DEBUG(llvm::dbgs() << "Start initializing " << getDialectNamespace() << "\n");
 ```
@@ -30,4 +29,23 @@ LogicalResult OpToOpPassAdaptor::run(Pass *pass, Operation *op,
                                      AnalysisManager am, bool verifyPasses,
                                      unsigned parentInitGeneration) {
   llvm::outs() << "Running pass: " << pass->getName() << "\n";
+```
+
+## Error 'bufferization.to_memref' op failed to verify that type of 'tensor' is the tensor equivalent of 'memref'
+```C++
+// 
+// Print out the problematic functions
+// 
+// llvm-project/mlir/lib/IR/Verifier.cpp
+LogicalResult OperationVerifier::verifyOpAndDominance(Operation &op) {
+  // Verify the operation first, collecting any IsolatedFromAbove operations.
+  if (failed(verifyOperation(op))) {
+    if (auto funcOp = dyn_cast<mlir::FunctionOpInterface>(op)) {
+      llvm::outs() << funcOp.getName() << "\n";
+    }
+    return failure();
+  }
+
+  //....
+}
 ```
