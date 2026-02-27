@@ -4,6 +4,8 @@
             "name": "Linux",
             "includePath": [
                 "/usr/local/cuda-12.4/include",
+                "${workspaceFolder}",
+                "llvm-project/mlir/include",
                 "${workspaceFolder}/llvm-project/mlir/include",
                 "${workspaceFolder}/llvm-project/llvm/include",
                 "${workspaceFolder}/llvm-project/lld",
@@ -13,7 +15,9 @@
                 "${workspaceFolder}/examples/lower_toy_dialect",
                 "${workspaceFolder}/examples/lower_toy_dialect/build",
                 "${workspaceFolder}/examples/toy_compiler",
-                "${workspaceFolder}/examples/toy_compiler/build"
+                "${workspaceFolder}/examples/toy_compiler/build",
+                "${workspaceFolder}/examples/triton_encodings",
+                "${workspaceFolder}/examples/triton_encodings/build"
             ],
             "defines": [
                 "GOOGLE_CUDA",
@@ -27,6 +31,8 @@
             "browse": {
                 "path": [
                     "/usr/local/cuda-12.4/include",
+                    "${workspaceFolder}",
+                    "llvm-project/mlir/include",
                     "${workspaceFolder}/llvm-project/mlir/include/**",
                     "${workspaceFolder}/llvm-project/llvm/include",
                     "${workspaceFolder}/llvm-project/lld",
@@ -36,7 +42,9 @@
                     "${workspaceFolder}/examples/lower_toy_dialect",
                     "${workspaceFolder}/examples/lower_toy_dialect/build",
                     "${workspaceFolder}/examples/toy_compiler",
-                    "${workspaceFolder}/examples/toy_compiler/build"
+                    "${workspaceFolder}/examples/toy_compiler/build",
+                    "${workspaceFolder}/examples/triton_encodings",
+                    "${workspaceFolder}/examples/triton_encodings/build"
                 ],
                 "databaseFilename": "${workspaceFolder}/.vscode/vc.db",
                 "limitSymbolsToIncludedHeaders": false
@@ -45,23 +53,3 @@
     ],
     "version": 4
 }
-
-// "${workspaceFolder}/toy/Ch2/include",
-// "${workspaceFolder}/toy/bazel-toy/pass1/include",
-// "${workspaceFolder}/toy/bazel-toy/external/org_tensorflow",
-// "${workspaceFolder}/toy/bazel-toy/external/com_google_absl",
-// "${workspaceFolder}/toy/bazel-toy/external/eigen_archive",
-// "${workspaceFolder}/toy/bazel-toy/external/com_google_protobuf/src",
-// "${workspaceFolder}/toy/bazel-toy/bazel-out/k8-dbg/bin/external/org_tensorflow",
-// "${workspaceFolder}/bazel-external/org_tensorflow",
-// "${workspaceFolder}/llvm-project/llvm/include",
-// "${workspaceFolder}/llvm-project/mlir/include",
-// "${workspaceFolder}/llvm-project/build/include",
-// "${workspaceFolder}/llvm-project/build/tools/mlir/include",
-// "${workspaceFolder}/lower_toy_dialect",
-// "${workspaceFolder}/lower_toy_dialect/build",
-// "${workspaceFolder}/study_disc_passes/**",
-// "${workspaceFolder}/study_disc_passes/bazel-out/k8-dbg/bin/mlir/disc/transforms",
-// "${workspaceFolder}/study_disc_passes/bazel-out/k8-dbg/bin/external/org_tensorflow/tensorflow",
-// "${workspaceFolder}/study_disc_passes/bazel-out/k8-dbg/bin/external/org_tensorflow/tensorflow/compiler/xla/mlir_hlo/**",
-// "${workspaceFolder}/study_disc_passes/bazel-study_disc_passes/external/org_tensorflow/tensorflow/compiler/xla/mlir_hlo/**",

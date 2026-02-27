@@ -13,3 +13,13 @@
   "terminal.integrated.tabs.enableAnimation": false
 }
 ```
+
+# Fix TableGen IntelliSense
+.vscode/settings.json
+```JSON
+{
+  "mlir.tablegen_compilation_databases": [
+    "./examples/triton_encodings/build/tablegen_compile_commands.yml"
+  ]
+}
+```
