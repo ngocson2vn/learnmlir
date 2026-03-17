@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 project(ToyLowering)
 set(CMAKE_CXX_STANDARD 17)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+
 cmake_path(GET PROJECT_SOURCE_DIR PARENT_PATH PARENT_DIR)
 message(STATUS "PARENT_DIR: ${PARENT_DIR}")
 cmake_path(GET PARENT_DIR PARENT_PATH LEARNMLIR_DIR)
@@ -30,11 +32,13 @@ add_executable(main
   main.cpp
 )
 add_dependencies(main
-  TritonGPUCTAAttrIncGen
-  TritonGPUAttrDefsIncGen
+  TritonIR
+  TritonGPUIR
 )
-target_compile_options(main PRIVATE -fno-rtti -g -O0)
+target_compile_options(main PRIVATE -g -O0)
 target_link_libraries(main PRIVATE
+  TritonGPUIR
+  TritonIR
   MLIRDialect
   MLIRRegisterAllDialects
   MLIRFuncDialect
@@ -46,5 +50,17 @@ target_link_libraries(main PRIVATE
   MLIRParser
   MLIRSupport
   MLIRTableGen
+
+  # LLVM
+  LLVMTableGen
+  LLVMSupport
+  LLVMTarget
+  LLVMX86CodeGen
+  LLVMX86AsmParser
+  LLVMX86Disassembler
+  LLVMX86TargetMCA
+  LLVMX86Desc
+  LLVMX86Info
+
   clang_rt.ubsan_standalone-x86_64
 )

@@ -14,6 +14,7 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "triton/Dialect/TritonGPU/IR/Dialect.h"
 #include "triton/Dialect/TritonGPU/IR/Attributes.h"
 
 using namespace mlir;
@@ -29,6 +30,8 @@ int main(int argc, char **argv) {
   MLIRContext context;
   context.getOrLoadDialect<func::FuncDialect>();
   context.getOrLoadDialect<arith::ArithDialect>();
+  context.getOrLoadDialect<mlir::triton::TritonDialect>();
+  context.getOrLoadDialect<mlir::triton::gpu::TritonGPUDialect>();
   registerAllDialects(context);
 
   // Create a ModuleOp
@@ -37,8 +40,25 @@ int main(int argc, char **argv) {
   ModuleOp module = builder.create<ModuleOp>(loc);
   builder.setInsertionPointToStart(module.getBody());
 
+  // Create a RankedTensorType instance
+  llvm::SmallVector<int64_t, 2> shape{64, 32};
+  mlir::Type elementType = builder.getF32Type();
+
+  // 1. Create the specific encoding attribute
+  llvm::SmallVector<unsigned, 2> sizePerThread{2, 2};
+  llvm::SmallVector<unsigned, 2> order{0, 1};
+  unsigned numWarps = 2;
+  unsigned numThreadsPerWarp = 32;
+  auto CTALayout = triton::gpu::CTAEncodingAttr::getDefault(&context, 2);
+  mlir::Attribute encoding = triton::gpu::BlockedEncodingAttr::get(&context, shape, sizePerThread, order, numWarps, numThreadsPerWarp, CTALayout);
+
+  // 2. Build the RankedTensorType with the encoding attached
+  auto tensorType = mlir::RankedTensorType::get(shape, elementType, encoding);
+  // llvm::outs() << "tensorType: " << tensorType << "\n";
+
+  // Create FuncOp
   auto indexType = builder.getIndexType();
-  auto kernelFunc = builder.create<func::FuncOp>(loc, "main", builder.getFunctionType({indexType}, {}));
+  auto kernelFunc = builder.create<func::FuncOp>(loc, "main", builder.getFunctionType({tensorType}, {indexType}));
   Block* kernelBody = kernelFunc.addEntryBlock();
   builder.setInsertionPointToStart(kernelBody);
 
@@ -46,7 +66,7 @@ int main(int argc, char **argv) {
   builder.create<func::ReturnOp>(loc, c1);
 
   // Print the resulting module
-  llvm::outs() << "\nMLIR module:\n";
+  llvm::outs() << "MLIR module:\n";
   module->print(llvm::outs());
   llvm::outs() << "\nAll done\n";
   return 0;

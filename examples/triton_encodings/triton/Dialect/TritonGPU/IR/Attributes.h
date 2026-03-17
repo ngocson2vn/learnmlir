@@ -2,6 +2,8 @@
 #define TRITON_DIALECT_TRITONGPU_IR_ATTRIBUTES_H_
 
 #include "mlir/IR/Attributes.h"
+
+#include "triton/Dialect/TritonGPU/IR/LinearLayout.h"
 #include "triton/Dialect/TritonGPU/IR/CTAEncodingAttr.h"
 #include "triton/Dialect/TritonGPU/IR/TritonGPUInterfaces.h"
 

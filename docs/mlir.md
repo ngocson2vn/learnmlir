@@ -398,23 +398,6 @@ LogicalResult OpToOpPassAdaptor::run(Pass *pass, Operation *op,
   mlir::PassManager pm(ctx);
 ```
 
-# Common Errors
-## error: operand #0 does not dominate this use
-Solution:  
-Modify llvm-project/mlir/lib/IR/Verifier.cpp to print out the faulty op:
-```C++
-/// Emit an error when the specified operand of the specified operation is an
-/// invalid use because of dominance properties.
-static void diagnoseInvalidOperandDominance(Operation &op, unsigned operandNo) {
-  InFlightDiagnostic diag = op.emitError("operand #")
-                            << operandNo << " does not dominate this use: "
-                            << op;
-```
-
-## error: cannot be converted to LLVM IR: missing `LLVMTranslationDialectInterface` registration for dialect for op: builtin.module
-
-
-
 # Location to string
 ```C++
 static std::string locationToString(mlir::Location loc) {
@@ -920,3 +903,4 @@ When TableGen processes the `def` above, it resolves the inheritance and generat
 Because TableGen was essentially built as a tiny database engine for compiler engineers. You use `.td` files to construct a "database" of processor instructions, compiler optimizations, or (in Triton's case) MLIR operations. A `def` adds a single "record" (or row) to that database.
 
 When you run the command `mlir-tblgen --print-records your_file.td` (as mentioned in the previous response), the tool strips away all the classes, `let` statements, and `multiclass` macros, and simply prints out the raw, flattened JSON-like dictionary for every `def` it found.
+
