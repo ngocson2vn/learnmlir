@@ -1,3 +1,69 @@
+<!-- TOC START -->
+- [MLIR Language Reference](#mlir-language-reference)
+  - [High-Level Structure](#high-level-structure)
+  - [Notation](#notation)
+- [Notes](#notes)
+  - [Dump an Operation](#dump-an-operation)
+  - [SSA](#ssa)
+  - [getUsers()](#getusers)
+  - [Get op name](#get-op-name)
+  - [Operation](#operation)
+- [Pass Manager](#pass-manager)
+- [Operation Pass](#operation-pass)
+- [Output file](#output-file)
+- [Block](#block)
+- [Debug](#debug)
+- [Dump Clusters](#dump-clusters)
+- [Dump Ops](#dump-ops)
+- [Dump FuncOp V1](#dump-funcop-v1)
+- [Dump FuncOp V2](#dump-funcop-v2)
+- [Dump FuncOp V3](#dump-funcop-v3)
+- [Pass Manager](#pass-manager)
+  - [Dump IRs](#dump-irs)
+- [Get pass name](#get-pass-name)
+  - [Disable multithreading](#disable-multithreading)
+- [Location to string](#location-to-string)
+- [rewriter.create](#rewritercreate)
+- [PassRegistry](#passregistry)
+- [OpInterface](#opinterface)
+- [Dialect Conversion](#dialect-conversion)
+  - [ConversionTarget](#conversiontarget)
+  - [TypeConverter](#typeconverter)
+  - [Main Conversion Loop](#main-conversion-loop)
+    - [Core Conversion Logic:](#core-conversion-logic)
+    - [FuncOpConverter](#funcopconverter)
+- [Load Passes Dependent Dialects](#load-passes-dependent-dialects)
+- [GPU Pipeline](#gpu-pipeline)
+- [Assembly Form](#assembly-form)
+- [ArrayAttr vs DictionaryAttr](#arrayattr-vs-dictionaryattr)
+    - [1. Data Structure: Array vs. Dictionary](#1-data-structure-array-vs-dictionary)
+    - [2. Custom Operation Syntax vs. Generic Metadata](#2-custom-operation-syntax-vs-generic-metadata)
+    - [Summary Comparison](#summary-comparison)
+- [TableGen and ODS](#tablegen-and-ods)
+  - [TableGen](#tablegen)
+  - [TableGen Record](#tablegen-record)
+    - [1. Abstract vs. Concrete Records](#1-abstract-vs-concrete-records)
+    - [2. A Conceptual Example](#2-a-conceptual-example)
+    - [Why Does TableGen Call It a Record?](#why-does-tablegen-call-it-a-record)
+- [MLIR Internal Storage](#mlir-internal-storage)
+    - [1. The Separation of Wrapper vs. Internal Storage](#1-the-separation-of-wrapper-vs-internal-storage)
+    - [2. "Uniqued" (Hash-Consing)](#2-uniqued-hash-consing)
+    - [3. "Within an instance of an MLIRContext"](#3-within-an-instance-of-an-mlircontext)
+    - [Why does MLIR do this?](#why-does-mlir-do-this)
+  - [What happens under the hood](#what-happens-under-the-hood)
+    - [1. Packing the Parameters (`KeyTy`)](#1-packing-the-parameters-keyty)
+    - [2. Hashing the Key](#2-hashing-the-key)
+    - [3. The Thread-Safe Table Lookup (Read Phase)](#3-the-thread-safe-table-lookup-read-phase)
+    - [4. The Equality Check (Handling Collisions)](#4-the-equality-check-handling-collisions)
+    - [5. The Allocation Phase (Write Phase)](#5-the-allocation-phase-write-phase)
+    - [6. Memory Allocation via BumpPtrAllocator](#6-memory-allocation-via-bumpptrallocator)
+    - [7. Construction and Hash Table Insertion](#7-construction-and-hash-table-insertion)
+    - [8. Wrapping and Returning](#8-wrapping-and-returning)
+<!-- TOC END -->
+
+
+
+
 # MLIR Language Reference
 https://mlir.llvm.org/docs/LangRef/
 
@@ -904,3 +970,87 @@ Because TableGen was essentially built as a tiny database engine for compiler en
 
 When you run the command `mlir-tblgen --print-records your_file.td` (as mentioned in the previous response), the tool strips away all the classes, `let` statements, and `multiclass` macros, and simply prints out the raw, flattened JSON-like dictionary for every `def` it found.
 
+
+# MLIR Internal Storage
+According to the MLIR documentation https://mlir.llvm.org/docs/DefiningDialects/AttributesAndTypes/#attributes-and-types
+
+> The C++ Attribute and Type classes in MLIR (like Ops, and many other things) are value-typed. This means that instances of Attribute or Type are passed around by-value, as opposed to by-pointer or by-reference. The Attribute and Type classes act as wrappers around internal storage objects that are uniqued within an instance of an MLIRContext.
+
+Please elaborate more on "internal storage objects that are uniqued within an instance of an MLIRContext".
+
+The phrase **"internal storage objects that are uniqued within an instance of an MLIRContext"** describes the core memory management and optimization design pattern MLIR uses for its Types and Attributes. 
+
+In compiler design, this technique is known as **Hash-Consing** or the **Flyweight Pattern**. Here is a detailed breakdown of what this means in practice:
+
+### 1. The Separation of Wrapper vs. Internal Storage
+In MLIR, when you work with an `Attribute` or `Type` (like an `IntegerType` or a `StringAttr`), you are actually working with a very thin C++ class. This class is just a wrapper around a single pointer.
+* **The Wrapper:** `mlir::Type` is passed by value (e.g., `void doSomething(mlir::Type t)`). Because it's essentially just a pointer, copying it is virtually free.
+* **The Internal Storage Object:** The pointer inside the wrapper points to a heavier, hidden C++ object (often called the `Storage` class, e.g., `IntegerTypeStorage`). This storage object holds the actual data—such as the bitwidth of the integer, the shape of a tensor, or the characters of a string.
+
+### 2. "Uniqued" (Hash-Consing)
+"Uniquing" means that MLIR guarantees there will only ever be **exactly one instance** of a specific internal storage object for a given set of parameters. 
+
+For example, if you have an MLIR program with thousands of 32-bit integers (`i32`), MLIR does not allocate thousands of `IntegerTypeStorage` objects. Instead:
+1. When you ask MLIR to create an `i32` type (e.g., `IntegerType::get(context, 32)`), MLIR hashes the parameter (`32`).
+2. It looks up this hash in an internal hash table.
+3. If an `i32` storage object already exists, MLIR returns a pointer to the existing object.
+4. If it doesn't exist, MLIR allocates a *new* storage object, stores it in the hash table, and returns a pointer to it.
+
+### 3. "Within an instance of an MLIRContext"
+The `MLIRContext` is the top-level god-object that holds the state for your compiler session. Among other things, the `MLIRContext` owns:
+* **The Uniquing Tables:** The hash maps/sets that check if a given Type or Attribute has already been created.
+* **The Memory Allocator:** A highly efficient bump-pointer allocator (`llvm::BumpPtrAllocator`). When a *new* storage object is created, it is allocated here. 
+
+Because the `MLIRContext` owns the memory, these storage objects live exactly as long as the `MLIRContext` does. You never have to call `delete` or use `std::shared_ptr` on a `Type` or `Attribute`. When the context is destroyed, all uniquely allocated types and attributes are destroyed at once.
+
+---
+
+### Why does MLIR do this?
+
+This design choice gives MLIR three massive advantages:
+
+1. **O(1) Lightning-Fast Comparisons:** Because every identical Type or Attribute maps to the exact same pointer in memory, comparing if two types are identical (`typeA == typeB`) skips checking the underlying data entirely. It simply compares the memory addresses (`typeA.impl == typeB.impl`). This is crucial because a compiler makes millions of type and attribute comparisons during pattern matching and transformations.
+2. **Memory Efficiency:** Complex types (like a nested `tensor<100x100x!custom_dialect.type>`) or massive string attributes can take up significant memory. By uniquing them, MLIR guarantees no memory is wasted on duplicate data.
+3. **Implicit Immutability:** Because a single storage object is shared across the entire IR (Intermediate Representation), **Types and Attributes are strictly immutable**. If you could change an `i32` to an `i64`, you would accidentally change every single `i32` in the entire program. Immutability makes the compiler thread-safe and much easier to reason about.
+
+## What happens under the hood
+Here is the step-by-step lifecycle of what happens under the hood when you execute `IntegerType::get(context, 32)`. 
+
+Behind the scenes, MLIR delegates this request to a highly optimized, thread-safe component inside the `MLIRContext` called the **`StorageUniquer`**.
+
+Here is the exact sequence of events:
+
+### 1. Packing the Parameters (`KeyTy`)
+First, the `IntegerType::get` method packs your requested parameters into a standard format. In MLIR C++ API terms, this is called the `KeyTy` (Key Type). For a standard signless integer, the `KeyTy` is essentially just an `unsigned int` representing the bitwidth (32).
+
+### 2. Hashing the Key
+The `StorageUniquer` takes this `KeyTy` and runs it through an LLVM hashing function (like `llvm::hash_value`). This produces a numerical hash code. The hash code is used to quickly identify which bucket in the `MLIRContext`'s internal hash table this type *should* live in.
+
+### 3. The Thread-Safe Table Lookup (Read Phase)
+Because MLIR is designed to compile code concurrently across many threads, the `MLIRContext` must be thread-safe. 
+* The `StorageUniquer` acquires a **read lock**.
+* It jumps to the specific bucket in the hash table using the calculated hash.
+* It searches through the bucket to see if an object with this exact hash already exists.
+
+### 4. The Equality Check (Handling Collisions)
+Hashes can collide (two different sets of parameters could theoretically produce the same hash). If the `StorageUniquer` finds an existing `Storage` object with a matching hash, it must verify it's truly the right type. 
+It calls an `operator==` method on the existing storage object, comparing its internal data to your `KeyTy` (e.g., *Is the existing integer storage actually 32 bits?*).
+
+* **Cache Hit:** If the hash matches *and* the equality check passes, the `StorageUniquer` unlocks and immediately returns a pointer to this existing object. The process ends here.
+* **Cache Miss:** If no object is found, the process must proceed to create one.
+
+### 5. The Allocation Phase (Write Phase)
+If this is the very first time an `i32` has been requested in this context, the `StorageUniquer` upgrades to a **write lock** to ensure no other threads interfere while it allocates memory.
+
+Because another thread might have squeezed in and created the `i32` type in the microsecond between the read lock and the write lock, MLIR performs a "double-checked lock." It quickly checks the hash table one more time. Assuming it's still not there, it proceeds to allocate.
+
+### 6. Memory Allocation via BumpPtrAllocator
+Standard C++ `new` or `malloc` is too slow for compiler infrastructure because it carries significant overhead. Instead, the `MLIRContext` uses an `llvm::BumpPtrAllocator`. 
+* This allocator grabs huge chunks (slabs) of memory from the operating system at once.
+* When MLIR needs memory for the `IntegerTypeStorage`, the allocator simply advances a pointer forward by the required number of bytes and returns that address. This is nearly instantaneous.
+
+### 7. Construction and Hash Table Insertion
+Now that it has raw memory, MLIR calls the `construct` method for the `IntegerTypeStorage` class. It initializes the memory, setting its internal bitwidth field to 32. Finally, the `StorageUniquer` inserts the pointer to this newly minted object into the hash table so future calls can find it. The write lock is released.
+
+### 8. Wrapping and Returning
+The pointer to the `IntegerTypeStorage` object is passed back to `IntegerType::get`. The C++ API wraps this raw pointer in the lightweight, value-typed `IntegerType` C++ class and hands it back to your code.
