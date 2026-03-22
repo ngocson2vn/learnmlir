@@ -380,6 +380,16 @@
             "CUDA_VISIBLE_DEVICES": "0",
             "CUDA_DIR": "/usr/local/cuda-12.4"
         }
+    },
+    {
+        "name": "mlir_internal_storage",
+        "type": "lldb-dap",
+        "request": "launch",
+        "console": "integratedTerminal",
+        "program": "${workspaceFolder}/examples/mlir_internal_storage/build/main",
+        "cwd": "${workspaceFolder}/examples/mlir_internal_storage",
+        "args": [],
+        "env": {}
     }
   ]
 }
