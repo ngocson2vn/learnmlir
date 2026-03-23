@@ -8,14 +8,28 @@
       - [2. The Model (The Bridge)](#2-the-model-the-bridge)
       - [3. The Wrapper (The Type Eraser)](#3-the-wrapper-the-type-eraser)
     - [The Ultimate Superpower: Retroactive Interfaces](#the-ultimate-superpower-retroactive-interfaces)
-  - [The connection between a CustomOp and ExampleOpInterface](#the-connection-between-a-customop-and-exampleopinterface)
+  - [CustomOp and ExampleOpInterface](#customop-and-exampleopinterface)
     - [1. The Setup: The Context's Secret Dictionary](#1-the-setup-the-contexts-secret-dictionary)
     - [2. The Connection: `dyn_cast`](#2-the-connection-dyn_cast)
     - [Summary of the Flow](#summary-of-the-flow)
   - [Model<CustomOp> plays the role of a vtable](#modelcustomop-plays-the-role-of-a-vtable)
     - [Traditional C++ (The Bloat)](#traditional-c-the-bloat)
     - [MLIR's Approach (The Solution)](#mlirs-approach-the-solution)
+  - [ExampleOpInterface and ExampleOpInterface::Trait](#exampleopinterface-and-exampleopinterfacetrait)
+    - [1. The Core Role: Consumer vs. Provider](#1-the-core-role-consumer-vs-provider)
+    - [2. When They Operate: Runtime vs. Compile-Time](#2-when-they-operate-runtime-vs-compile-time)
+    - [3. Memory and Structure: Value Type vs. CRTP Template](#3-memory-and-structure-value-type-vs-crtp-template)
+    - [Summary Comparison](#summary-comparison)
+  - [ExampleOpInterface::Trait and detail::ExampleOpInterfaceInterfaceTraits](#exampleopinterfacetrait-and-detailexampleopinterfaceinterfacetraits)
+    - [The Inheritance Chain (Tracing the Code)](#the-inheritance-chain-tracing-the-code)
+    - [The Connection Point: `mlir::OpInterface`](#the-connection-point-mliropinterface)
+    - [Why does this connection matter?](#why-does-this-connection-matter)
+    - [Summary](#summary)
+  - [How Model is registered to MLIRContext](#how-model-is-registered-to-mlircontext)
 <!-- TOC END -->
+
+
+
 
 
 # MLIR Interface
@@ -31,6 +45,11 @@ The client code:
 iface:<br/>
 <img src="./images/iface.png">
 <br/>
+
+
+## Diagrams
+https://docs.google.com/presentation/d/1BLqGNuN5tHH1dpH9-Z3W83pZIAEGnkt6vfw9L-VEsR0/edit?slide=id.g3d194b30dd3_0_33#slide=id.g3d194b30dd3_0_33
+
 
 ## How `iface` is created
 **Call Stack:**
@@ -85,7 +104,7 @@ public:
 
 The `Interface(ValueT t = ValueT())` creates a `mlir::Op<mlir::example::ExampleOpInterface>` instance from the `op` argument.<br/>
 Since `ExampleOpInterface::getInterfaceFor(op)` returns a pointer to `detail::ExampleOpInterfaceInterfaceTraits::Model<CustomOp>`, `conceptImpl` is initialized to this pointer.
-<b/r>
+<br/>
 
 ## Concept-based Polymorphism
 Concept-based polymorphism (often referred to interchangeably with **type erasure**) is a powerful C++ design pattern. It allows you to write generic code that handles different types uniformly, *without* forcing those types to inherit from a common base class or use virtual functions.
@@ -168,7 +187,7 @@ For example, imagine you want the standard `arith.addi` operation (built into ML
 With concept-based polymorphism, you don't have to. You can use the **`ExternalModel`** (which was generated in your C++ snippet). You simply define how `arith.addi` should behave, instantiate an `ExternalModel<MyArithModel, arith::AddIOp>`, and register it with the `MLIRContext`. From then on, any `dyn_cast<ExampleOpInterface>` on an `arith.addi` operation will succeed.
 
 
-## The connection between a CustomOp and ExampleOpInterface
+## CustomOp and ExampleOpInterface
 The connection happens dynamically inside the **MLIR infrastructure**—specifically, when you attempt to cast the operation using `dyn_cast`. 
 
 The `MLIRContext` acts as a "matchmaker" between your `CustomOp` data and the `Concept` behavior. Here is exactly how that connection is made:
@@ -240,3 +259,128 @@ Instead of putting the vptr in the object:
 
 The tradeoff is that when you call `dyn_cast<ExampleOpInterface>(op)`, MLIR has to do a quick hash map lookup in the `MLIRContext` to find the `Model` rather than just dereferencing a pointer. However, because compiler transformations usually cast once and then call interface methods many times, this tradeoff heavily favors MLIR's design.
 
+
+## ExampleOpInterface and ExampleOpInterface::Trait
+To put it simply, `ExampleOpInterface` and `ExampleOpInterface::Trait` represent the two opposite ends of the interface system. They are two sides of the same coin, but they are used by completely different people at completely different times.
+
+Here is the breakdown of the key differences:
+
+### 1. The Core Role: Consumer vs. Provider
+
+* **`ExampleOpInterface` is for the Consumer (The Caller):** This is the class you use when you are writing a compiler pass or an analysis. You don't know (or care) what the specific operation is. You just want to wrap a generic `Operation*` and call `getMagicNumber()`. It is the **Wrapper**.
+* **`ExampleOpInterface::Trait` is for the Provider (The Callee):**
+    This is the class you use when you are defining a brand new operation (like `CustomOp`). You add this trait to your operation's inheritance list to loudly declare: *"I implement this interface!"* It is the **Mixin**.
+
+### 2. When They Operate: Runtime vs. Compile-Time
+
+* **`ExampleOpInterface` operates at Runtime:**
+    It is used dynamically. When your compiler is actively compiling user code, it uses `dyn_cast<ExampleOpInterface>(op)` to check *at runtime* if a random operation happens to support the interface.
+* **`ExampleOpInterface::Trait` operates at Compile-Time:**
+    It is entirely resolved by the C++ compiler when you are building MLIR itself. By inheriting from it, you allow C++ template metaprogramming to inject default methods (like returning `42`) directly into your `CustomOp` class.
+
+### 3. Memory and Structure: Value Type vs. CRTP Template
+
+* **`ExampleOpInterface` is a lightweight value type:**
+    It is not a template. It is just a tiny struct containing two pointers: one pointing to the raw `Operation*`, and one pointing to the hidden vtable (`Concept*`). It exists to erase the concrete type.
+* **`ExampleOpInterface::Trait` is a CRTP template (`template <typename ConcreteOp>`):**
+    It heavily relies on the Curiously Recurring Template Pattern. It takes your specific operation class as a template parameter so that it knows exactly which C++ type to inject the default interface methods into.
+
+---
+
+### Summary Comparison
+
+| Feature | `ExampleOpInterface` (The Wrapper) | `ExampleOpInterface::Trait` (The Mixin) |
+| :--- | :--- | :--- |
+| **Who uses it?** | Generic compiler passes and analyses. | The concrete operation class (e.g., `CustomOp`). |
+| **What does it do?** | Performs dynamic dispatch (calls the vtable). | Provides default method implementations. |
+| **How is it used?** | `dyn_cast<ExampleOpInterface>(op)` | `class CustomOp : public Op<..., Trait>` |
+| **Phase** | Run-time type erasure. | Compile-time structural inheritance. |
+
+In short: you use the **`Trait`** to *build* the operation, and you use the **Wrapper** (`ExampleOpInterface`) to *use* the operation. 
+
+
+## ExampleOpInterface::Trait and detail::ExampleOpInterfaceInterfaceTraits
+They do very different things, but they are physically connected through C++ inheritance. 
+
+Think of it like this:
+* **`example::ExampleOpInterface::Trait`** is the **"Plugin"** that you attach to your `CustomOp`.
+* **`detail::ExampleOpInterfaceInterfaceTraits`** is the **"Blueprint"** that holds the `Concept` and `Model` (the vtable mechanics).
+
+The connection between them is a deliberate C++ template inheritance chain. Here is exactly how the "Plugin" connects your operation to the "Blueprint".
+
+### The Inheritance Chain (Tracing the Code)
+
+When you defined `CustomOp` in TableGen, you told it to inherit from `ExampleOpInterface::Trait`. If we follow that inheritance up the chain in your generated C++ code, we find exactly where the two concepts meet.
+
+**Level 1: Your Operation**
+```cpp
+class CustomOp : public mlir::Op<CustomOp, ExampleOpInterface::Trait> { ... };
+```
+
+**Level 2: The Generated Wrapper Trait**
+Inside the generated `ExampleOpInterface` class, `Trait` is just a thin wrapper:
+```cpp
+template <typename ConcreteOp>
+struct Trait : public detail::ExampleOpInterfaceTrait<ConcreteOp> {};
+```
+
+**Level 3: The Default Implementation Injector**
+This next level provides the default methods (like returning `42`). But look closely at what *it* inherits from:
+```cpp
+template <typename ConcreteOp>
+struct ExampleOpInterfaceTrait : public ::mlir::OpInterface<
+    ExampleOpInterface, 
+    detail::ExampleOpInterfaceInterfaceTraits // <--- THERE IT IS!
+>::Trait<ConcreteOp> {
+    int getMagicNumber() { return 42; } 
+};
+```
+
+### The Connection Point: `mlir::OpInterface`
+At the very top of the inheritance chain, we hit MLIR's core C++ library: `mlir::OpInterface::Trait`. 
+
+Notice that this core base class takes two template parameters:
+1.  The interface wrapper (`ExampleOpInterface`)
+2.  **The Blueprint container (`detail::ExampleOpInterfaceInterfaceTraits`)**
+
+This is the exact bridge. By attaching the `Trait` plugin to `CustomOp`, you forced `CustomOp` to inherit a base class that is heavily templated on the `...InterfaceTraits` blueprint.
+
+### Why does this connection matter?
+Remember Step 4 of the registration process, where MLIR uses template metaprogramming to build the vtable? It uses this exact inheritance chain to find the vtable.
+
+When you call `addOperations<CustomOp>()`, MLIR's core library interrogates `CustomOp`:
+1.  *"What traits do you have?"* (It sees `ExampleOpInterface::Trait`).
+2.  *"What is the base class of that trait?"* (It traces it up to `mlir::OpInterface<..., detail::ExampleOpInterfaceInterfaceTraits>::Trait`).
+3.  *"Ah! I found the blueprint!"* (It extracts `detail::ExampleOpInterfaceInterfaceTraits`).
+4.  *"Now, give me the Model."* (It reaches inside the blueprint, grabs `Model<CustomOp>`, and instantiates your vtable).
+
+### Summary
+* `ExampleOpInterface::Trait` is the **vehicle** that carries the interface into your operation.
+* `detail::ExampleOpInterfaceInterfaceTraits` is the **payload** inside that vehicle. 
+* Because your operation inherits the vehicle, MLIR's registration system can unpack the payload, find the `Model`, and wire up the dynamic dispatch (concept-based polymorphism) automatically.
+
+
+
+## How Model is registered to MLIRContext
+Call Stack:
+```C++
+void mlir::detail::InterfaceMap::insertModel<mlir::example::detail::ExampleOpInterfaceInterfaceTraits::Model<mlir::example::CustomOp>>() (/data00/home/son.nguyen/workspace/learnmlir/llvm-project/mlir/include/mlir/Support/InterfaceSupport.h:237)
+void mlir::detail::InterfaceMap::insertPotentialInterface<mlir::example::ExampleOpInterface::Trait<mlir::example::CustomOp>>() (/data00/home/son.nguyen/workspace/learnmlir/llvm-project/mlir/include/mlir/Support/InterfaceSupport.h:225)
+mlir::detail::InterfaceMap mlir::detail::InterfaceMap::get<mlir::OpTrait::ZeroRegions<mlir::example::CustomOp>, mlir::OpTrait::ZeroResults<mlir::example::CustomOp>, mlir::OpTrait::ZeroSuccessors<mlir::example::CustomOp>, mlir::OpTrait::ZeroOperands<mlir::example::CustomOp>, mlir::OpTrait::OpInvariants<mlir::example::CustomOp>, mlir::example::ExampleOpInterface::Trait<mlir::example::CustomOp>>() (/data00/home/son.nguyen/workspace/learnmlir/llvm-project/mlir/include/mlir/Support/InterfaceSupport.h:199)
+mlir::Op<mlir::example::CustomOp, mlir::OpTrait::ZeroRegions, mlir::OpTrait::ZeroResults, mlir::OpTrait::ZeroSuccessors, mlir::OpTrait::ZeroOperands, mlir::OpTrait::OpInvariants, mlir::example::ExampleOpInterface::Trait>::getInterfaceMap() (/data00/home/son.nguyen/workspace/learnmlir/llvm-project/mlir/include/mlir/IR/OpDefinition.h:1877)
+mlir::RegisteredOperationName::Model<mlir::example::CustomOp>::Model(mlir::Dialect*) (/data00/home/son.nguyen/workspace/learnmlir/llvm-project/mlir/include/mlir/IR/OperationSupport.h:533)
+std::__detail::_MakeUniq<mlir::RegisteredOperationName::Model<mlir::example::CustomOp>>::__single_object std::make_unique<mlir::RegisteredOperationName::Model<mlir::example::CustomOp>, mlir::Dialect*>(mlir::Dialect*&&) (/usr/include/c++/12/bits/unique_ptr.h:1065)
+void mlir::RegisteredOperationName::insert<mlir::example::CustomOp>(mlir::Dialect&) (/data00/home/son.nguyen/workspace/learnmlir/llvm-project/mlir/include/mlir/IR/OperationSupport.h:686)
+void mlir::Dialect::addOperations<mlir::example::CustomOp, mlir::example::DefaultOp>() (/data00/home/son.nguyen/workspace/learnmlir/llvm-project/mlir/include/mlir/IR/Dialect.h:283)
+mlir::example::ExampleDialect::initialize() (/data00/home/son.nguyen/workspace/learnmlir/examples/mlir_interface/Dialect.cpp:13)
+mlir::example::ExampleDialect::ExampleDialect(mlir::MLIRContext*) (/data00/home/son.nguyen/workspace/learnmlir/examples/mlir_interface/build/ExampleDialect.cpp.inc:19)
+mlir::example::ExampleDialect* mlir::MLIRContext::getOrLoadDialect<mlir::example::ExampleDialect>()::'lambda'()::operator()() const (/data00/home/son.nguyen/workspace/learnmlir/llvm-project/mlir/include/mlir/IR/MLIRContext.h:103)
+std::unique_ptr<mlir::Dialect, std::default_delete<mlir::Dialect>> llvm::function_ref<std::unique_ptr<mlir::Dialect, std::default_delete<mlir::Dialect>> ()>::callback_fn<mlir::example::ExampleDialect* mlir::MLIRContext::getOrLoadDialect<mlir::example::ExampleDialect>()::'lambda'()>(long) (/data00/home/son.nguyen/workspace/learnmlir/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:46)
+llvm::function_ref<std::unique_ptr<mlir::Dialect, std::default_delete<mlir::Dialect>> ()>::operator()() const (/data00/home/son.nguyen/workspace/learnmlir/llvm-project/llvm/include/llvm/ADT/STLFunctionalExtras.h:69)
+mlir::MLIRContext::getOrLoadDialect(llvm::StringRef, mlir::TypeID, llvm::function_ref<std::unique_ptr<mlir::Dialect, std::default_delete<mlir::Dialect>> ()>) (/data00/home/son.nguyen/workspace/learnmlir/llvm-project/mlir/lib/IR/MLIRContext.cpp:491)
+mlir::example::ExampleDialect* mlir::MLIRContext::getOrLoadDialect<mlir::example::ExampleDialect>() (/data00/home/son.nguyen/workspace/learnmlir/llvm-project/mlir/include/mlir/IR/MLIRContext.h:102)
+main (/data00/home/son.nguyen/workspace/learnmlir/examples/mlir_interface/main.cpp:24)
+__libc_start_call_main (libc_start_call_main.h:58)
+__libc_start_main_impl (libc-start.c:360)
+_start (:12)
+```

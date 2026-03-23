@@ -33,7 +33,7 @@ int main() {
   // to our ExampleOpInterface.
   auto printMagicNumber = [](Operation *op) {
     // Interface cast (concept-based polymorphism)
-    if (auto iface = dyn_cast<example::ExampleOpInterface>(op)) {
+    if (auto iface = mlir::dyn_cast<example::ExampleOpInterface>(op)) {
       llvm::outs() << op->getName() << " magic number: " 
                    << iface.getMagicNumber() << "\n";
     } else {
@@ -42,8 +42,8 @@ int main() {
   };
 
   // Test the interface hooks
-  // printMagicNumber(defaultOp);
   printMagicNumber(customOp);
+  printMagicNumber(defaultOp);
 
   return 0;
 }
