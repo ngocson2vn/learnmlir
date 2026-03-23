@@ -17,7 +17,7 @@
                 "${workspaceFolder}/examples/toy_compiler",
                 "${workspaceFolder}/examples/toy_compiler/build",
                 "${workspaceFolder}/examples/triton_encodings",
-                "${workspaceFolder}/examples/triton_encodings/build"
+                "${workspaceFolder}/examples/**/build"
             ],
             "defines": [
                 "GOOGLE_CUDA",
@@ -44,7 +44,7 @@
                     "${workspaceFolder}/examples/toy_compiler",
                     "${workspaceFolder}/examples/toy_compiler/build",
                     "${workspaceFolder}/examples/triton_encodings",
-                    "${workspaceFolder}/examples/triton_encodings/build"
+                    "${workspaceFolder}/examples/**/build"
                 ],
                 "databaseFilename": "${workspaceFolder}/.vscode/vc.db",
                 "limitSymbolsToIncludedHeaders": false

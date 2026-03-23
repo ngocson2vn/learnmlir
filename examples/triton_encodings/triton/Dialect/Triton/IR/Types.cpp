@@ -19,7 +19,7 @@ void TritonDialect::registerTypes() {
   addTypes<
 #define GET_TYPEDEF_LIST
 #include "triton/Dialect/Triton/IR/Types.cpp.inc"
-      >();
+  >();
 }
 
 Type PointerType::parse(AsmParser &parser) {

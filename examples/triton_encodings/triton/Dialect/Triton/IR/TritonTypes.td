@@ -57,6 +57,10 @@ def TT_PtrType : TritonTypeDef<"Pointer", "ptr"> {
         Pointer type in Triton IR type system, which could be pointing to scalars or tensors.
     }];
 
+    // TableGen will generate an internal storage class for this type, namely, PointerTypeStorage
+    // PointerTypeStorage has two data members:
+    //   Type pointeeType;
+    //   int addressSpace;
     let parameters = (ins "Type":$pointeeType, "int":$addressSpace);
 
     let builders = [

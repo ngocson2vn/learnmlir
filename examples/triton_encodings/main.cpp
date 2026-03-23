@@ -28,11 +28,11 @@ int main(int argc, char **argv) {
 
   // Set up the MLIR context
   MLIRContext context;
-  context.getOrLoadDialect<func::FuncDialect>();
-  context.getOrLoadDialect<arith::ArithDialect>();
-  context.getOrLoadDialect<mlir::triton::TritonDialect>();
-  context.getOrLoadDialect<mlir::triton::gpu::TritonGPUDialect>();
   registerAllDialects(context);
+  context.loadDialect<func::FuncDialect>();
+  context.loadDialect<arith::ArithDialect>();
+  context.loadDialect<mlir::triton::TritonDialect>();
+  context.loadDialect<mlir::triton::gpu::TritonGPUDialect>();
 
   // Create a ModuleOp
   OpBuilder builder(&context);

@@ -390,6 +390,16 @@
         "cwd": "${workspaceFolder}/examples/mlir_internal_storage",
         "args": [],
         "env": {}
+    },
+    {
+        "name": "mlir_interface",
+        "type": "lldb-dap",
+        "request": "launch",
+        "console": "integratedTerminal",
+        "program": "${workspaceFolder}/examples/mlir_interface/build/main",
+        "cwd": "${workspaceFolder}/examples/mlir_interface",
+        "args": [],
+        "env": {}
     }
   ]
 }
