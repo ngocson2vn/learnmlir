@@ -118,3 +118,7 @@ static PointerType get(Type pointeeType, int addressSpace) {
 
 **Why do this?** It's purely for developer ergonomics. It makes the C++ API much cleaner to use. Instead of writing `PointerType::get(myType.getContext(), myType, 1)`, a C++ developer writing compiler passes can just write `PointerType::get(myType, 1)`.
 
+
+# `assemblyFormat` vs `hasCustomAssemblyFormat`
+* **`let assemblyFormat = "...";`**: TableGen writes the `TypeSwitch`, *and* it writes the `print`/`parse` methods for you automatically.
+* **`let hasCustomAssemblyFormat = 1;`**: TableGen writes the `TypeSwitch`, but leaves the `print`/`parse` methods blank for you to implement manually in C++. This is useful when your attribute has highly complex syntax that the declarative `assemblyFormat` string can't handle.

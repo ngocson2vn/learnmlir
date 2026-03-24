@@ -54,7 +54,9 @@ int main(int argc, char **argv) {
 
   // 2. Build the RankedTensorType with the encoding attached
   auto tensorType = mlir::RankedTensorType::get(shape, elementType, encoding);
-  // llvm::outs() << "tensorType: " << tensorType << "\n";
+  llvm::outs() << "tensorType: ";
+  llvm::outs() << tensorType;
+  llvm::outs() << "\n\n";
 
   // Create FuncOp
   auto indexType = builder.getIndexType();
