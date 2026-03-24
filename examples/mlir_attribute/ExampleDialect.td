@@ -7,8 +7,8 @@ def Example_Dialect : Dialect {
   let cppNamespace = "::mlir::example";
   let summary = "An example dialect for demonstrating interfaces.";
 
-  // CRUCIAL FIX 3: Tells the dialect to use the auto-generated dispatch hooks
-  // for all attributes that define a `mnemonic` and `assemblyFormat`.
+  // CRUCIAL: Tells the dialect to use the auto-generated dispatch hooks
+  // for all attributes that define a `mnemonic` and (`assemblyFormat` or `hasCustomAssemblyFormat`).
   let useDefaultAttributePrinterParser = 1;
 }
 

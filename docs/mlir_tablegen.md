@@ -1,3 +1,12 @@
+<!-- TOC START -->
+- [Parameters](#parameters)
+- [Builders](#builders)
+    - [Syntax Breakdown](#syntax-breakdown)
+    - [Context: How does this tie into the rest of the snippet?](#context-how-does-this-tie-into-the-rest-of-the-snippet)
+    - [What does this generate in C++?](#what-does-this-generate-in-c)
+- [`assemblyFormat` vs `hasCustomAssemblyFormat`](#assemblyformat-vs-hascustomassemblyformat)
+<!-- TOC END -->
+
 # Parameters
 ```MLIR
 def TT_PtrType : TritonTypeDef<"Pointer", "ptr"> {
@@ -34,7 +43,7 @@ struct PointerTypeStorage : public ::mlir::TypeStorage {
 };
 ```
 
-TableGen will also generate a class for this type which as a `get(Type pointeeType, int addressSpace)` method:
+TableGen will also generate a class for this type which has a `get(Type pointeeType, int addressSpace)` method:
 ```C++
 class PointerType : public ::mlir::Type::TypeBase<PointerType, ::mlir::Type, detail::PointerTypeStorage> {
 public:
@@ -116,7 +125,21 @@ static PointerType get(Type pointeeType, int addressSpace) {
 }
 ```
 
-**Why do this?** It's purely for developer ergonomics. It makes the C++ API much cleaner to use. Instead of writing `PointerType::get(myType.getContext(), myType, 1)`, a C++ developer writing compiler passes can just write `PointerType::get(myType, 1)`.
+**Why do this?** It's purely for developer ergonomics. It makes the C++ API much cleaner to use. Instead of writing `PointerType::get(myType.getContext(), myType, 1)`, a C++ developer writing compiler passes can just write `PointerType::get(myType, 1)`.<br/>
+
+
+# Dialect useDefaultAttributePrinterParser
+```MLIR
+def Example_Dialect : Dialect {
+  let name = "example";
+  let cppNamespace = "::mlir::example";
+  let summary = "An example dialect for demonstrating interfaces.";
+
+  // CRUCIAL: Tells the dialect to use the auto-generated dispatch hooks
+  // for all attributes that define a `mnemonic` and (`assemblyFormat` or `hasCustomAssemblyFormat`).
+  let useDefaultAttributePrinterParser = 1;
+}
+```
 
 
 # `assemblyFormat` vs `hasCustomAssemblyFormat`
