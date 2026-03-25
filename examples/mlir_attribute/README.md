@@ -7,4 +7,7 @@ ExampleDialect.td
 ```
 
 # `assemblyFormat` vs `hasCustomAssemblyFormat`
-[`assemblyFormat` vs `hasCustomAssemblyFormat`](../../docs/mlir_tablegen.md#assemblyformat-vs-hascustomassemblyformat)
+Read section [`assemblyFormat` vs `hasCustomAssemblyFormat`](../../docs/mlir_tablegen.md#assemblyformat-vs-hascustomassemblyformat)
+
+# Encoding
+See [RankedTensorType encoding](../../docs/mlir_tensor_encoding.md)
