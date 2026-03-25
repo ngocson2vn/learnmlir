@@ -7,6 +7,70 @@
 - [`assemblyFormat` vs `hasCustomAssemblyFormat`](#assemblyformat-vs-hascustomassemblyformat)
 <!-- TOC END -->
 
+
+# Dialect useDefaultAttributePrinterParser
+```MLIR
+def Example_Dialect : Dialect {
+  let name = "example";
+  let cppNamespace = "::mlir::example";
+  let summary = "An example dialect for demonstrating interfaces.";
+
+  // CRUCIAL: Tells the dialect to use the auto-generated dispatch hooks
+  // for all attributes that define a `mnemonic` and (`assemblyFormat` or `hasCustomAssemblyFormat`).
+  let useDefaultAttributePrinterParser = 1;
+}
+```
+
+# Dialect useDefaultTypePrinterParser
+In MLIR TableGen, the `let useDefaultTypePrinterParser = 1;` syntax does something incredibly useful for parsing and printing, but there is an important distinction to make here: unlike `parameters`, `builders`, or `genVerifyDecl`, this flag is typically set on the **Dialect** definition itself, not on the individual types.
+
+Here is a straightforward breakdown of what this flag means and how it eliminates a massive amount of C++ boilerplate.
+
+### Syntax Breakdown
+
+* **`let useDefaultTypePrinterParser = 1;`**: You are setting a boolean flag to `1` (true) inside your dialect's TableGen class (e.g., `def MyDialect : Dialect { ... }`). 
+
+### Context: The Problem It Solves
+
+When MLIR reads a `.mlir` text file, it encounters textual representations of types (like `!triton.ptr<f32, 1>`). The MLIR parser sees the `!triton.` prefix and hands the rest of the string over to the Triton dialect, essentially saying: *"Hey Triton, parse this type for me."*
+
+Similarly, when MLIR prints IR back to text, it asks the dialect to print its types. 
+
+Historically, to handle this, you had to manually write giant `switch` statements in your dialect's C++ implementation file to figure out which specific type was being parsed or printed. It looked something like this:
+
+```cpp
+// The old, manual way (without the flag)
+::mlir::Type TritonDialect::parseType(::mlir::DialectAsmParser &parser) const {
+    llvm::StringRef mnemonic;
+    if (parser.parseKeyword(&mnemonic)) return Type();
+    
+    if (mnemonic == "ptr") return PointerType::parse(parser);
+    if (mnemonic == "other_type") return OtherType::parse(parser);
+    // ... endless boilerplate for every type ...
+    return Type();
+}
+```
+Every time you added a new type to your dialect, you had to remember to update this C++ method.
+
+### What does this generate in C++?
+
+By setting `let useDefaultTypePrinterParser = 1;` in your Dialect's `.td` file, you tell TableGen to automatically generate that giant `switch` statement for you. 
+
+TableGen looks at every `TypeDef` registered to your dialect, extracts their `mnemonic` strings (like `"ptr"` from your Triton pointer example), and automatically implements the following methods in your Dialect's C++ class:
+
+1.  **`::mlir::Type MyDialect::parseType(::mlir::DialectAsmParser &parser) const;`**
+2.  **`void MyDialect::printType(::mlir::Type type, ::mlir::DialectAsmPrinter &printer) const;`**
+
+When the generated `parseType` method matches the mnemonic `"ptr"`, it automatically dispatches the rest of the parsing work to your `PointerType` class. 
+
+### How does this connect to your individual Types?
+
+For this auto-generated dialect parser to actually work, your individual types must know how to parse and print themselves. They do this in one of two ways:
+
+1.  **Declaratively:** By defining an `assemblyFormat = "...";` in the type's `.td` file.
+2.  **Manually in C++:** By setting `hasCustomAssemblyFormat = 1;` in the type's `.td` file (as seen in your Triton pointer snippet) and manually writing the `parse` and `print` C++ methods.
+
+
 # Parameters
 ```MLIR
 def TT_PtrType : TritonTypeDef<"Pointer", "ptr"> {
@@ -128,20 +192,72 @@ static PointerType get(Type pointeeType, int addressSpace) {
 **Why do this?** It's purely for developer ergonomics. It makes the C++ API much cleaner to use. Instead of writing `PointerType::get(myType.getContext(), myType, 1)`, a C++ developer writing compiler passes can just write `PointerType::get(myType, 1)`.<br/>
 
 
-# Dialect useDefaultAttributePrinterParser
-```MLIR
-def Example_Dialect : Dialect {
-  let name = "example";
-  let cppNamespace = "::mlir::example";
-  let summary = "An example dialect for demonstrating interfaces.";
+# assemblyFormat vs hasCustomAssemblyFormat
+* **`let assemblyFormat = "...";`**: TableGen writes the `TypeSwitch`, *and* it writes the `print`/`parse` methods for you automatically.
+* **`let hasCustomAssemblyFormat = 1;`**: TableGen writes the `TypeSwitch`, but leaves the `print`/`parse` methods blank for you to implement manually in C++. This is useful when your attribute has highly complex syntax that the declarative `assemblyFormat` string can't handle.
 
-  // CRUCIAL: Tells the dialect to use the auto-generated dispatch hooks
-  // for all attributes that define a `mnemonic` and (`assemblyFormat` or `hasCustomAssemblyFormat`).
-  let useDefaultAttributePrinterParser = 1;
+
+# Verify
+In MLIR TableGen, the `let genVerifyDecl = 1;` syntax tells the compiler to generate a C++ **declaration** for a verification method, but leaves the actual **implementation** up to you to write in your C++ source file.
+
+Here is a straightforward breakdown of what this means and why you need it for custom Types or Attributes.
+
+### Syntax Breakdown
+
+* **`let genVerifyDecl = 1;`**: You are setting the boolean flag `genVerifyDecl` (generate verification declaration) to `1` (true). By default, this is usually `0` (false) for Types and Attributes, meaning no custom verification is required.
+
+### Context: Why do we need verification?
+
+When you define `parameters` for a Type (like the `pointeeType` and `addressSpace` in your Triton pointer example), TableGen knows their C++ types (`Type` and `int`). However, TableGen does not know your **domain-specific rules**. 
+
+For example:
+* What if a developer tries to create a `PointerType` where the `pointeeType` is a `FunctionType` or a `VoidType`, but your compiler only allows pointers to scalars or tensors?
+* What if they pass a negative number for `addressSpace`, which might be invalid for your hardware target?
+
+MLIR creates Types and Attributes via a uniquing system (the `get()` methods). Before MLIR allocates memory for a new Type, it needs a way to check if the provided parameters are semantically valid. Setting `genVerifyDecl = 1` provides the hook to enforce these rules.
+
+### What does this generate in C++?
+
+When you run `mlir-tblgen`, this flag forces the generator to add a static `verify` method signature to your generated C++ class header (`.h.inc` file). 
+
+Using the Triton pointer type as an example, TableGen will generate a declaration that looks like this:
+
+```cpp
+// Auto-generated inside the PointerType class definition
+static ::mlir::LogicalResult verify(
+    ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
+    Type pointeeType, 
+    int addressSpace
+);
+```
+* **`emitError`**: A callback function provided by MLIR. If the parameters are invalid, you use this to report exactly what went wrong.
+* **The parameters**: It passes in the exact parameters you defined in `let parameters = ...` so you can inspect them.
+* **`LogicalResult`**: The method must return `success()` if the parameters are valid, or `failure()` if they are invalid.
+
+### What do YOU have to write?
+
+Because you told TableGen to only generate the *declaration*, the C++ compiler will throw a linker error until you write the actual implementation in your `.cpp` file. 
+
+You would manually write something like this:
+
+```cpp
+::mlir::LogicalResult PointerType::verify(
+    ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
+    Type pointeeType, 
+    int addressSpace) {
+    
+    // Rule 1: Address space cannot be negative
+    if (addressSpace < 0) {
+        return emitError() << "address space cannot be negative";
+    }
+
+    // Rule 2: Cannot point to a function type
+    if (isa<FunctionType>(pointeeType)) {
+        return emitError() << "pointers to functions are not supported";
+    }
+
+    return ::mlir::success();
 }
 ```
 
-
-# `assemblyFormat` vs `hasCustomAssemblyFormat`
-* **`let assemblyFormat = "...";`**: TableGen writes the `TypeSwitch`, *and* it writes the `print`/`parse` methods for you automatically.
-* **`let hasCustomAssemblyFormat = 1;`**: TableGen writes the `TypeSwitch`, but leaves the `print`/`parse` methods blank for you to implement manually in C++. This is useful when your attribute has highly complex syntax that the declarative `assemblyFormat` string can't handle.
+By doing this, any time `PointerType::get(...)` is called anywhere in your compiler, MLIR will automatically call your `verify` function first. If `verify` fails, MLIR will gracefully emit an error and abort the type creation, preventing your compiler from crashing later on due to malformed types.
