@@ -10,6 +10,8 @@
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 
+#include "llvm/Support/Debug.h"
+#define DEBUG_TYPE "toy-passes"
 
 #include "toy_dialect.h"
 
@@ -135,7 +137,7 @@ struct FuncOpConverter : public OpConversionPattern<func::FuncOp> {
   LogicalResult matchAndRewrite(func::FuncOp oldFunc, OpAdaptor adaptor,
                                 ConversionPatternRewriter &rewriter) const override {
 
-    llvm::outs() << "\nBegin FuncOpConverter:\n" << *oldFunc->getParentOp() << "\n";
+    LLVM_DEBUG(llvm::dbgs() << "\nBegin FuncOpConverter:\n" << *oldFunc->getParentOp() << "\n\n");
 
     //===============================================================================================
     // 1. Create newFunc
@@ -156,6 +158,7 @@ struct FuncOpConverter : public OpConversionPattern<func::FuncOp> {
     }
 
     auto newFuncType = FunctionType::get(getContext(), newInputTypes, newResultTypes);
+    SmallVector<Type> newArgTypes(newFuncType.getInputs().begin(), newFuncType.getInputs().end());
     auto newFunc = rewriter.create<func::FuncOp>(oldFunc.getLoc(), oldFunc.getName(), newFuncType);
 
     // Copy attrs except the type
@@ -169,73 +172,21 @@ struct FuncOpConverter : public OpConversionPattern<func::FuncOp> {
 
     // Move the body.
     rewriter.inlineRegionBefore(oldFunc.getBody(), newFunc.getBody(), newFunc.end());
-
-    //===============================================================================================
-    // 2. Convert the entry block's arguments
-    //===============================================================================================
-    // Get the old entry block (now inside newFunc).
-    Block& oldEntry = newFunc.getBody().front();
-
-    // 1) Create a fresh entry block with converted argument types.
-    SmallVector<Location> argLocs;
-    argLocs.reserve(oldEntry.getNumArguments());
-    for (BlockArgument a : oldEntry.getArguments()) {
-      argLocs.push_back(a.getLoc());
+    
+    Block& entryBlock = newFunc.front();
+    auto sig = typeConverter->convertBlockSignature(&entryBlock);
+    if (!sig.has_value()) {
+      llvm::errs() << "Failed to convert entry block signature\n";
+      return failure();
     }
 
-    SmallVector<Type> newArgTypes(newFuncType.getInputs().begin(), newFuncType.getInputs().end());
-
-    // Insert the new block before the old one.
-    Block *newEntry = rewriter.createBlock(&newFunc.getBody(), newFunc.getBody().begin(), newArgTypes, argLocs);
-
-    // 2) Materialize conversions from newEntry args to the types expected by oldEntry.
-    // We need a mapping: newArgs -> bridgeArgs (with old types) -> uses
-    SmallVector<Value> bridgeArgs;
-    bridgeArgs.reserve(oldEntry.getNumArguments());
-    rewriter.setInsertionPoint(newEntry, newEntry->begin());
-    for (auto pair : llvm::zip(oldEntry.getArguments(), newEntry->getArguments())) {
-      Value oldArg = std::get<0>(pair);
-      Value newArg = std::get<1>(pair);
-      Type oldTy = oldArg.getType();
-      Type newTy = newArg.getType();
-      Value bridge;
-      if (oldTy != newTy) {
-        // Ask the TypeConverter to materialize a conversion at the block boundary.
-        bridge = typeConverter->materializeSourceConversion(rewriter, oldArg.getLoc(), oldTy, newArg);
-        if (!bridge) {
-          llvm::outs() << "\nCurrent MLIR module state:\n";
-          llvm::outs() << *oldFunc->getParentOp() << "\n\n";
-          llvm::errs() << "failed to materialize conversion from " << newTy << " to " << oldTy;
-          return failure();
-        }
-      }
-
-      bridgeArgs.push_back(bridge);
-    }
-
-    llvm::outs() << "\nBefore update block arguments:\n";
-    llvm::outs() << *oldFunc->getParentOp() << "\n\n";
-
-    // 3) Replace all uses of old entry arguments inside the oldEntry with the bridged values.
-    for (auto pair : llvm::zip(oldEntry.getArguments(), bridgeArgs)) {
-      rewriter.replaceAllUsesWith(std::get<0>(pair), std::get<1>(pair));
-    }
-
-    llvm::outs() << "\nAfter update block arguments:\n";
-    llvm::outs() << *oldFunc->getParentOp() << "\n\n";
-
-    // 4) Move the operations from oldEntry to newEntry and erase the old block.
-    rewriter.inlineBlockBefore(&oldEntry, newEntry, newEntry->end(), newEntry->getArguments());
-
-    llvm::outs() << "\nAfter move the entry block:\n";
-    llvm::outs() << *oldFunc->getParentOp() << "\n\n";
+    rewriter.applySignatureConversion(&entryBlock, sig.value(), typeConverter);
 
     //===============================================================================================
     // 3. Replace oldFunc with newFunc
     //===============================================================================================
     rewriter.replaceOp(oldFunc, newFunc);
-
-    llvm::outs() << "\nAfter FuncOpConverter:\n" << *newFunc->getParentOp() << "\n\n";
+    LLVM_DEBUG(llvm::dbgs() << "\nAfter FuncOpConverter:\n" << *newFunc->getParentOp() << "\n\n");
 
     return success();
   }

@@ -3,7 +3,10 @@
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/InitAllDialects.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Parser/Parser.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
@@ -28,12 +31,12 @@ int main(int argc, char **argv) {
 
   // Set up the MLIR context
   MLIRContext context;
-  context.getOrLoadDialect<toy::ToyDialect>();
-  context.getOrLoadDialect<func::FuncDialect>();
-  context.getOrLoadDialect<arith::ArithDialect>();
-  context.getOrLoadDialect<memref::MemRefDialect>();
-  context.getOrLoadDialect<bufferization::BufferizationDialect>();
-  context.getOrLoadDialect<linalg::LinalgDialect>();
+  context.loadDialect<toy::ToyDialect>();
+  context.loadDialect<func::FuncDialect>();
+  context.loadDialect<arith::ArithDialect>();
+  context.loadDialect<memref::MemRefDialect>();
+  context.loadDialect<bufferization::BufferizationDialect>();
+  context.loadDialect<linalg::LinalgDialect>();
 
   // Load the input MLIR file
   llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileOrErr =
