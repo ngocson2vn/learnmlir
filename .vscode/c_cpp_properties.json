@@ -17,6 +17,7 @@
                 "${workspaceFolder}/examples/toy_compiler",
                 "${workspaceFolder}/examples/toy_compiler/build",
                 "${workspaceFolder}/examples/triton_encodings",
+                "${workspaceFolder}/examples/**",
                 "${workspaceFolder}/examples/**/build"
             ],
             "defines": [
@@ -44,6 +45,7 @@
                     "${workspaceFolder}/examples/toy_compiler",
                     "${workspaceFolder}/examples/toy_compiler/build",
                     "${workspaceFolder}/examples/triton_encodings",
+                    "${workspaceFolder}/examples/**",
                     "${workspaceFolder}/examples/**/build"
                 ],
                 "databaseFilename": "${workspaceFolder}/.vscode/vc.db",
