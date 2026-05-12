@@ -1,9 +1,18 @@
 #include "Dialect.h"
 
+#include "mlir/Dialect/Arith/IR/Arith.h"
+
 #include "ExampleDialect.cpp.inc"
 
 #define GET_OP_CLASSES
 #include "ExampleOps.cpp.inc"
+
+namespace {
+
+class ArithAddIOpExampleModel : public mlir::example::ExampleOpInterface::ExternalModel<ArithAddIOpExampleModel, mlir::arith::AddIOp> {
+};
+
+}
 
 namespace mlir {
 namespace example {
@@ -14,6 +23,8 @@ void ExampleDialect::initialize() {
 #define GET_OP_LIST
 #include "ExampleOps.cpp.inc"
       >();
+
+  ::mlir::arith::AddIOp::attachInterface<ArithAddIOpExampleModel>(*getContext());
 }
 
 // Implement the overridden interface method for CustomOp

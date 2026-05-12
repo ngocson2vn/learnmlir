@@ -5,6 +5,8 @@
 #include "mlir/InitAllDialects.h"
 #include "mlir/Parser/Parser.h"
 
+#include "mlir/Dialect/Arith/IR/Arith.h"
+
 #include "llvm/Support/Debug.h"
 
 #include "Dialect.h"
@@ -21,7 +23,8 @@ using namespace mlir;
 int main() {
   // Setup MLIR Context and Builder
   MLIRContext context;
-  context.getOrLoadDialect<example::ExampleDialect>();
+  context.loadDialect<arith::ArithDialect>();
+  context.loadDialect<example::ExampleDialect>();
   OpBuilder builder(&context);
   Location loc = builder.getUnknownLoc();
 
@@ -44,6 +47,13 @@ int main() {
   // Test the interface hooks
   printMagicNumber(customOp);
   printMagicNumber(defaultOp);
+
+  auto lhs = builder.create<arith::ConstantIntOp>(builder.getUnknownLoc(), 23, 32);
+  auto rhs = builder.create<arith::ConstantIntOp>(builder.getUnknownLoc(), 67, 32);
+  auto addOp = builder.create<arith::AddIOp>(builder.getUnknownLoc(), lhs, rhs);
+
+  auto iface = llvm::cast<example::ExampleOpInterface>(addOp.getOperation());
+  llvm::outs() << addOp->getName() << " magic number: " << iface.getMagicNumber() << "\n";
 
   return 0;
 }

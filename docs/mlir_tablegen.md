@@ -261,3 +261,86 @@ You would manually write something like this:
 ```
 
 By doing this, any time `PointerType::get(...)` is called anywhere in your compiler, MLIR will automatically call your `verify` function first. If `verify` fails, MLIR will gracefully emit an error and abort the type creation, preventing your compiler from crashing later on due to malformed types.
+
+# Optional Group
+```MLIR
+    let assemblyFormat = [{
+      $a`,` $b`,` $c (`,` `inputPrecision` `=` $inputPrecision^)? attr-dict `:`
+      type($a) `*` type($b) `->` type($d)
+    }];
+```
+In MLIR's TableGen (ODS), the **`?`** and **`^`** operators work together to create what is known as an **Optional Group**. 
+
+Here is the straightforward breakdown of how they work, both conceptually and within the specific context of your `TT_DotOp` code.
+
+---
+
+### 1. The Question Mark (`?`): The Optional Group
+Just like in regular expressions, the `?` means "zero or one." Wrapping a sequence of elements in `(...)` followed by a `?` tells the MLIR parser and printer that this specific chunk of syntax is not strictly required. 
+
+However, you can't just tell the compiler a group is optional—you have to tell it *exactly how to decide* whether to include it or not. That is where the caret comes in.
+
+### 2. The Caret (`^`): The Anchor
+Inside every optional group, exactly **one** variable must be flagged with a `^`. This variable becomes the **anchor**. 
+
+The anchor is the "brain" of the optional group. Its presence (or absence) acts as a boolean flag that dictates the behavior of the entire group around it. Only variables that *can* be empty (like Optional attributes, Default-Valued attributes, or Variadic operands/results) are allowed to be anchors.
+
+### How it Works in Your Code
+Let's look at your specific snippet:
+```tablegen
+( `,` `inputPrecision` `=` $inputPrecision^ )?
+```
+Your anchor here is `$inputPrecision^`. Because `$inputPrecision` is defined as a `DefaultValuedAttr` (with a default of `"IEEE"`), the anchor operates based on whether the attribute is holding its default value or a custom value.
+
+Here is how the anchor controls both the **Printer** (generating `.mlir` text) and the **Parser** (reading `.mlir` text):
+
+#### **When Printing (C++ to Text)**
+When MLIR converts your in-memory C++ operation into text, it looks at the anchor `$inputPrecision^` to decide what to do with the group:
+* **If the value is default (`IEEE`):** The anchor evaluates to *false* (absent). MLIR completely ignores the optional group. The output will just be: 
+    `%a, %b, %c {other_attr = 5} : ...` (Notice the comma and the word `inputPrecision` are perfectly elided).
+* **If the value is custom (e.g., `tf32`):** The anchor evaluates to *true* (present). MLIR prints the entire group. The output becomes: 
+    `%a, %b, %c, inputPrecision = tf32 {other_attr = 5} : ...`
+
+#### **When Parsing (Text to C++)**
+When MLIR reads a `.mlir` file, the anchor helps resolve parsing ambiguity.
+* The parser sees the start of the optional group and looks for the first element (the `,` literal). 
+* If it sees `, inputPrecision =`, it continues parsing.
+* Once it successfully parses the value for `$inputPrecision` (the anchor), it definitively "commits" to this group. It knows for a fact the optional group is present and valid.
+
+### Why is the `^` strictly required?
+Imagine if you didn't have the `^` anchor, and you had a format like this:
+`($operandA `,` $operandB)?`
+
+If MLIR is trying to print this, it wouldn't know which variable is responsible for the group. Should it print the group if `$operandA` is present but `$operandB` is missing? What if both are missing? By forcing you to mark one with a `^`, MLIR knows exactly which variable serves as the source of truth for the entire block. 
+
+
+# Space Elision
+Given the following assembly format:
+```MLIR
+  let assemblyFormat = [{
+    $a `,` $b `,` $d `` custom<Token>($acc_dep, type($token)) `,` $useD`,`
+    $pred `` custom<BarriersAndPreds>($barriers, $barrier_preds)
+    attr-dict `:` qualified(type($a)) `,` qualified(type($b)) `,`
+    qualified(type($d)) (`,` qualified(type($barriers))^)?
+  }];
+```
+By default, MLIR automatically inserts a space between elements in the `assemblyFormat` to keep things readable (e.g., `%arg0 %arg1`). 
+
+The empty literal block ` `` ` explicitly tells MLIR **not** to insert a space between the preceding element (`$d`) and the following element (`custom<Token>...`). This is typically used to tightly bind syntax together. For example, if the custom token prints as `[%token]`, the elision ensures it prints as `%d[%token]` instead of `%d [%token]`.
+
+# custom\<Name\>
+While TableGen is great at auto-generating boilerplate, it can't handle highly complex or irregular custom syntax natively. The `custom<Name>` directive acts as an escape hatch to C++.
+
+* **The Hooks:** By writing `custom<Token>`, you are promising the MLIR compiler that you have manually written two C++ functions in your dialect's code: `parseToken` and `printToken`. TableGen will generate code that calls these functions.
+* **The Arguments:** You are passing two variables into this custom logic:
+  1. `$acc_dep`: The optional async token operand (`Optional<TTG_AsyncToken>`).
+  2. `type($token)`: The type of the optional async token result.
+
+### Why do it this way?
+Looking at your `description`, these tokens are optional and used for aliasing/modref checks on the accumulator (`$d`). Because both the operand `$acc_dep` and the result `$token` represent optional tokens, their existence in the `.mlir` text is tightly coupled.
+
+Instead of writing complex TableGen optional groups `()?` for both the operand and the result type, the developer chose to handle them together in a single custom C++ function. 
+
+**How it likely works in practice:**
+1. **Parsing:** The `parseToken` C++ function will look at the text immediately following `$d`. If it sees a specific syntax (perhaps a keyword or brackets), it will parse that text, assign the resulting SSA value to `$acc_dep`, and simultaneously figure out that the result type `type($token)` needs to be populated. If it sees nothing, it sets them both to empty/null.
+2. **Printing:** The `printToken` C++ function will check if `$acc_dep` exists. If it does, it prints the custom syntax. If not, it prints nothing, cleanly hiding the optional variables. 
