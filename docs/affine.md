@@ -45,3 +45,28 @@ Think of affine.apply as a way to perform index computations or transformations 
 Context in MLIR<br/>
 In MLIR’s affine dialect, such operations are often used to represent structured computations (e.g., in loops or tensor operations). Without more of the IR, we can’t say exactly what %arg7, %c1, or %c0 are, but this operation is a building block for defining how data is accessed or transformed.
 Does that clarify it? If you have more of the IR or specific values for %c1 and %c0, I can refine the explanation further!
+
+## Example
+```MLIR
+%20 = linalg.generic {indexing_maps = [affine_map<(d0, d1, d2, d3) -> (d0, 0, 0, d3 + 3)>, affine_map<(d0, d1, d2, d3) -> (d0, d1, d2, d3)>], iterator_types = ["parallel", "parallel", "parallel", "parallel"]} ins(%arg0 : tensor<?x1x1x51xf16>) outs(%19 : tensor<?x4x50x50xf16>) { ^bb0(%in: f16, %out: f16): linalg.yield %in : f16 } -> tensor<?x4x50x50xf16>
+```
+
+**affine_map<(d0, d1, d2, d3) -> (d0, 0, 0, d3 + 1)> is for calculating indices of the input tensor**
+
+In a `linalg.generic` operation, the `indexing_maps` array pairs its maps to the input and output tensors strictly based on **order**.
+
+Because `affine_map<(d0, d1, d2, d3) -> (d0, 0, 0, d3 + 1)>` is the **first** map in the list, it serves as the coordinate calculator for the **first** input tensor (`%arg0`).
+
+Think of it as a function that translates loop coordinates into memory coordinates. If the underlying 4D loop is currently at iteration `(d0=2, d1=1, d2=3, d3=5)`, the operation feeds those numbers into your input map:
+
+* **Input Map:** `(2, 1, 3, 5) -> (2, 0, 0, 5 + 1)`
+* **Calculated Input Index:** `[2, 0, 0, 6]`
+
+The operation now knows it must go to the input tensor `%arg0` and read the exact value stored at `[2, 0, 0, 6]`. It will do this calculation for every single step of the loop.
+
+Let's look at each dimension:
+
+* **`d0 -> d0`:** The first dimension is mapped 1-to-1. If the outermost loop is at index `5`, it reads from index `5` of the input tensor's first dimension (typically the batch dimension).
+* **`d1 -> 0` and `d2 -> 0` (Broadcasting):** This is where **broadcasting** happens. Even as the `d1` and `d2` loops iterate forward (e.g., `d1` goes `0, 1, 2, 3`), the input tensor *always* reads from index `0` for its second and third dimensions. Because the loops advance but the read coordinate stays frozen at `0`, the exact same input data is reused (or "broadcast") across the `d1` and `d2` dimensions of the output.
+* **`d3 -> d3 + 1` (Slicing/Shifting):** This is an offset. When the innermost loop `d3` is at index `0`, it reads from index `1` in the input tensor. When `d3` is `1`, it reads from `2`, and so on. This effectively skips the very first element (index `0`) of the input's last dimension, creating a shifted "slice" of the data.
+
