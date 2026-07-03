@@ -1,4 +1,10 @@
 # MLIR StringAttr
+## Quickly get actual string
+```C++
+strAttr.getImpl()->value
+```
+
+## Detail Explanation
 <img src="./images/StringAttr.png" />
 <br/>
 
