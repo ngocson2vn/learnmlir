@@ -72,5 +72,33 @@ Therefore, those 3 data members are hidden.
 <br/>
 
 
-Note that `stringAttr.getImpl()` returns a `detail::StringAttrStorage*` pointer.<br/>
-So we can get the `value` from `stringAttr.getImpl()->value`.
+Note that `StringAttr` inherits `StorageUserBase<StringAttr, mlir::Attribute, detail::StringAttrStorage, detail::AttributeUniquer, mlir::TypedAttr::Trait>`:
+```C++
+template <typename ConcreteT, typename BaseT, typename StorageT,
+          typename UniquerT, template <typename T> class... Traits>
+class StorageUserBase : public BaseT, public Traits<ConcreteT>... {
+public:
+  using ImplType = StorageT;
+
+  /// Utility for easy access to the storage instance.
+  ImplType *getImpl() const { return static_cast<ImplType *>(this->impl); }
+```
+`ImplType` is an alias of `StorageT` which actually is `detail::StringAttrStorage` which inherits from `AttributeStorage`. <br/>
+
+`this->impl` actually is a `detail::StringAttrStorage*` pointer but in an `Attribute` subobject it is stored as an `AttributeStorage*` pointer:
+```C++
+class Attribute {
+public:
+  using ImplType = AttributeStorage;
+
+  /* implicit */ Attribute(const ImplType *impl)
+      : impl(const_cast<ImplType *>(impl)) {}
+
+protected:
+  ImplType *impl{nullptr};
+};
+```
+
+When `stringAttr.getImpl()` is called, `StorageUserBase::getImpl()` will be called because `StorageUserBase` is the direct base class of `StringAttr`. <br/>
+Therefore, `StorageUserBase::getImpl()` will perform a down-cast from `AttributeStorage*` to `detail::StringAttrStorage*`. <br/>
+Finally, we can get the `value` from `stringAttr.getImpl()->value`.
