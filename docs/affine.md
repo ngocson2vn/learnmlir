@@ -1,3 +1,131 @@
+# linalg.generic
+## 1. Iteration space
+**In a `linalg.generic`, the iteration space is not declared explicitly.** It is **derived** from the shapes of the operands together with the `indexing_maps`.
+
+### Official rule (Property 1 of Linalg)
+
+> **Input and Output Operands Define The Iteration Space**  
+> A `linalg.generic` op fully *derives* the specification of its iteration space from its operands.
+
+This is a core design principle of the Linalg dialect.
+
+### How the derivation works (applied to the example)
+
+```mlir
+#identity = affine_map<(d0, d1) -> (d0, d1)>
+
+linalg.generic {
+  indexing_maps = [#identity, #identity, #identity],
+  iterator_types = ["parallel", "parallel"]
+} ins(%A, %B : tensor<?x?xf32>, tensor<?x?xf32>)
+  outs(%C : tensor<?x?xf32>) { ... }
+```
+
+1. **Rank of the iteration space**  
+   Taken from the domain of the indexing maps (here `(d0, d1)`) and from the length of `iterator_types`.  
+   → 2-dimensional iteration space.
+
+2. **Bounds / sizes of each dimension**  
+   Inferred by looking at which tensor dimensions are accessed by each iteration dimension, using the indexing maps.
+
+   Because every map is the **identity**:
+   - Iteration dimension `d0` maps to dimension 0 of `%A`, `%B` and `%C`
+   - Iteration dimension `d1` maps to dimension 1 of `%A`, `%B` and `%C`
+
+   Therefore the size of the iteration space is exactly the shape of the tensors:
+   ```text
+   iteration space = [0 .. dim(%A, 0)) × [0 .. dim(%A, 1))
+   ```
+   (The shapes of `%A`, `%B` and `%C` are required to be consistent; otherwise the IR is invalid.)
+
+3. **Result of the inference**  
+   The op behaves as if it had been written with two nested parallel loops whose bounds come from the tensor dimensions:
+
+   ```mlir
+   // conceptual lowering
+   for %d0 = 0 to tensor.dim %A, 0 {
+     for %d1 = 0 to tensor.dim %A, 1 {
+       // body of the generic
+     }
+   }
+   ```
+
+### General case (when maps are not identity)
+
+The same principle applies, but the correspondence is obtained by “inverting” the indexing maps:
+
+- Each iteration dimension is associated with the tensor dimension(s) it indexes.
+- The size of that iteration dimension is taken from the corresponding operand dimension.
+- All operands that contribute a size for the same iteration dimension must agree.
+
+This is why Linalg can guarantee (by construction) that there are no out-of-bounds accesses, provided the dynamic dimensions of the operands are consistent.
+
+### Summary for the given example
+
+| Component              | Role in determining the iteration space                  |
+|------------------------|----------------------------------------------------------|
+| `iterator_types`       | Declares the **rank** and the nature of each dimension   |
+| `indexing_maps`        | Defines the **mapping** from iteration dims → tensor dims|
+| Shapes of `%A/%B/%C`   | Supply the actual **bounds** of each iteration dimension |
+
+The iteration space is therefore completely determined by the combination of the operand shapes and the indexing maps; there is no separate loop-bound attribute on the `linalg.generic` itself.
+
+## 2. affine_map
+So the main purpose of affine_map<(d0, d1) -> (d0, d1)> is to compute indices of input tensors?
+
+**Not only for input tensors — it defines the indexing for *every* operand (both `ins` and `outs`).**
+
+### Precise role of the affine map
+
+In a `linalg.generic`, each entry in `indexing_maps` answers this question:
+
+> Given a point `(d0, d1, …)` in the **iteration space**, which element of *this particular operand* should be accessed?
+
+So the map `affine_map<(d0, d1) -> (d0, d1)>` means:
+
+```text
+iteration point (d0, d1)  →  access operand[d0, d1]
+```
+
+It is used for **both**:
+
+- **Inputs** (`ins`) → to decide which value to *read*
+- **Outputs** (`outs`) → to decide which location to *write* (or read-modify-write in reductions)
+
+### In the concrete example
+
+```mlir
+indexing_maps = [
+  #identity,   // for %A  (input)
+  #identity,   // for %B  (input)
+  #identity    // for %C  (output)
+]
+```
+
+All three maps being the identity simply says:
+
+- Read `A[d0, d1]`
+- Read `B[d0, d1]`
+- Write the result into `C[d0, d1]`
+
+### Broader purpose
+
+The affine maps are the **bridge** between:
+
+1. The abstract iteration space (defined by the shapes of the operands), and  
+2. The concrete memory/tensor accesses performed by the computation.
+
+They are what make Linalg “structured”: the compiler can reason about data movement, tiling, fusion, vectorization, etc., without having to analyze arbitrary index arithmetic inside a loop nest.
+
+### Short correction of your statement
+
+| Your phrasing                                      | More accurate view                                      |
+|----------------------------------------------------|---------------------------------------------------------|
+| “compute indices of input tensors”                 | compute indices of **all operands** (inputs *and* outputs) |
+| main purpose                                       | define the **access pattern** of each operand relative to the iteration space |
+
+So yes — computing indices is the immediate effect — but the deeper purpose is to *declare the relationship* between iteration space and data layout for every operand.
+
 # Explain this MLIR IR:
 ```mlir
 %15 = affine.apply affine_map<(d0)[s0, s1] -> (d0 * s0 + s1)>(%arg7)[%c1, %c0]

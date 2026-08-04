@@ -1,14 +1,22 @@
 #include "llvm/Support/ToolOutputFile.h"
 #include "mlir/Support/FileUtilities.h"
 
-static llvm::raw_fd_ostream& getDebugOs(const char* output_file_name) {
+#include <unordered_map>
+
+llvm::raw_fd_ostream& getDebugOs(const char* output_file_name) {
   std::error_code errCode;
-  static llvm::raw_fd_ostream debugOs(output_file_name, errCode);
-  if (errCode.value()) {
+  static std::unordered_map<std::string, llvm::raw_fd_ostream> os_map;
+  auto it = os_map.find(output_file_name);
+  if (it != os_map.end()) {
+    return it->second;
+  }
+  auto res = os_map.try_emplace(output_file_name, output_file_name, errCode);
+  if (!res.second) {
     std::terminate();
   }
 
-  return debugOs;
+  auto& node = *res.first;
+  return node.second;
 }
 
 int main(int argc, char** argv) {
