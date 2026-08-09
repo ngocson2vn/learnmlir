@@ -2,38 +2,22 @@ cmake_minimum_required(VERSION 3.10)
 project(ToyLowering)
 set(CMAKE_CXX_STANDARD 17)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -std=c++14")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -std=c++14 -Wno-deprecated-declarations")
+
+# Use ld.lld linker
 add_link_options("-fuse-ld=lld")
 
-cmake_path(GET PROJECT_SOURCE_DIR PARENT_PATH PARENT_DIR)
-# message(STATUS "PARENT_DIR: ${PARENT_DIR}")
-# cmake_path(GET PARENT_DIR PARENT_PATH LEARNMLIR_DIR)
-# message(STATUS "LEARNMLIR_DIR: ${LEARNMLIR_DIR}")
-
-message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
-include_directories(${CMAKE_BINARY_DIR})
-
-# set(LLVM_BINARY_DIR "third_party/llvm-project/build")
-# add_subdirectory(third_party/llvm-project/llvm ${LLVM_BINARY_DIR})
-# add_subdirectory(third_party/llvm-project/llvm)
-
+#============================================================================
+# MLIR and LLVM
+#============================================================================
 find_package(MLIR REQUIRED CONFIG)
+find_package(LLVM REQUIRED CONFIG)
 
 # LLVM and MLIR headers
-include_directories(third_party/llvm-project/llvm/include)
-include_directories(third_party/llvm-project/mlir/include)
-set(MLIR_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/third_party/llvm-project/mlir/include)
-
-# Some headers are generated automatically, which is why we need to include the following directories
-# For llvm/Config/llvm-config.h
-include_directories(${LLVM_BINARY_DIR}/include)
-include_directories(${LLVM_BINARY_DIR}/tools/mlir/include)
-
-# include_directories(${CMAKE_BINARY_DIR}/third_party/llvm-project/llvm/include)
-# include_directories(${CMAKE_BINARY_DIR}/third_party/llvm-project/llvm/tools/mlir/include)
-
-set(MLIR_CMAKE_DIR "${PROJECT_SOURCE_DIR}/third_party/llvm-project/mlir/cmake/modules")
-set(LLVM_CMAKE_DIR "${PROJECT_SOURCE_DIR}/third_party/llvm-project/llvm/cmake/modules")
+message(STATUS "MLIR_INCLUDE_DIRS: ${MLIR_INCLUDE_DIRS}")
+message(STATUS "LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
+include_directories(${MLIR_INCLUDE_DIRS})
+include_directories(${LLVM_INCLUDE_DIRS})
 
 message(STATUS "MLIR_CMAKE_DIR: ${MLIR_CMAKE_DIR}")
 message(STATUS "LLVM_CMAKE_DIR: ${LLVM_CMAKE_DIR}")
@@ -41,14 +25,24 @@ list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 
-message(STATUS "PROJECT_SOURCE_DIR: ${PROJECT_SOURCE_DIR}")
-include_directories(${PROJECT_SOURCE_DIR})
 
+#============================================================================
+# MHLO
+#============================================================================
 set(STABLEHLO_BUILD_EMBEDDED "ON")
 add_subdirectory(third_party/mlir-hlo)
 include_directories(third_party/mlir-hlo)
 include_directories(${CMAKE_BINARY_DIR}/third_party/mlir-hlo)
 
+
+#============================================================================
+# main
+#============================================================================
+cmake_path(GET PROJECT_SOURCE_DIR PARENT_PATH PARENT_DIR)
+message(STATUS "PROJECT_SOURCE_DIR: ${PROJECT_SOURCE_DIR}")
+include_directories(${PROJECT_SOURCE_DIR})
+message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
+include_directories(${CMAKE_BINARY_DIR})
 add_executable(main 
   main.cpp
 )

@@ -47,9 +47,10 @@ fi
 
 mkdir -p ${ROOT_DIR}/build
 
+# -DLLVM_BINARY_DIR=${ROOT_DIR}/llvm-build \
 cmake -G Ninja -S . -B build \
-  -DLLVM_BINARY_DIR=${ROOT_DIR}/llvm-build \
   -DMLIR_DIR=${ROOT_DIR}/llvm-build/lib/cmake/mlir
 
-cmake --build build/ -v
+# cmake --build build/ -v
+cmake --build build/
 echo "DONE"
