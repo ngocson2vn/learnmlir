@@ -1,0 +1,140 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 74c76ed..31e6d94 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -163,9 +163,9 @@ add_subdirectory(bindings)
+ add_subdirectory(deallocation)
+ add_subdirectory(mhlo)
+ add_subdirectory(stablehlo)
+-add_subdirectory(stablehlo_ext)
+-add_subdirectory(tests)
+-add_subdirectory(tools)
++# add_subdirectory(stablehlo_ext)
++# add_subdirectory(tests)
++# add_subdirectory(tools)
+ add_subdirectory(transforms)
+ add_subdirectory(utils)
+ 
+diff --git a/bindings/c/CMakeLists.txt b/bindings/c/CMakeLists.txt
+index fd2a5c2..f5e285c 100644
+--- a/bindings/c/CMakeLists.txt
++++ b/bindings/c/CMakeLists.txt
+@@ -8,10 +8,10 @@ add_mlir_public_c_api_library(MLIRHLOCAPIDialects
+   # For AllMhLoPasses:
+   ChloPasses
+   MhloPasses
+-  MhloToArithmeticConversion
++  # MhloToArithmeticConversion
+   MhloToMemrefConversion
+-  MhloToStandard
+-  MhloToLinalg
++  # MhloToStandard
++  # MhloToLinalg
+   MhloToStablehlo
+   StablehloToMhlo
+ )
+diff --git a/mhlo/transforms/CMakeLists.txt b/mhlo/transforms/CMakeLists.txt
+index 4e8c6df..71c1b05 100644
+--- a/mhlo/transforms/CMakeLists.txt
++++ b/mhlo/transforms/CMakeLists.txt
+@@ -54,9 +54,9 @@ add_mlir_library(MhloPasses
+ 
+   LINK_LIBS PUBLIC
+   ChloOps
+-  MhloAnalysis
++  # MhloAnalysis
+   MhloDialect
+-  MhloScatterUtils
++  # MhloScatterUtils
+   MhloTypeConversion
+   MLIRIR
+   MLIRLinalgDialect
+@@ -103,7 +103,7 @@ add_mlir_library(ChloPasses
+ 
+   LINK_LIBS PUBLIC
+   ChloOps
+-  HloToLinalgUtils
++  # HloToLinalgUtils
+   MLIRComplexDialect
+   MLIRIR
+   MLIRPass
+@@ -156,10 +156,10 @@ add_library(AllMhloPasses INTERFACE)
+ target_link_libraries(AllMhloPasses INTERFACE
+   ChloPasses
+   MhloPasses
+-  MhloToArithmeticConversion
++  # MhloToArithmeticConversion
+   MhloToMemrefConversion
+-  HloToLinalgUtils
+-  MhloToLinalg
++  # HloToLinalgUtils
++  # MhloToLinalg
+   MhloToStablehlo
+   StablehloToMhlo
+ )
+diff --git a/stablehlo_ext/analysis/CMakeLists.txt b/stablehlo_ext/analysis/CMakeLists.txt
+index 726d340..59f4708 100644
+--- a/stablehlo_ext/analysis/CMakeLists.txt
++++ b/stablehlo_ext/analysis/CMakeLists.txt
+@@ -1,5 +1,5 @@
+ add_mlir_library(MhloAnalysis
+-  shape_component_analysis.cc
++  shape_component_analysis.cpp
+ 
+   DEPENDS
+   mlir-headers
+diff --git a/utils/cycle_detector.cc b/utils/cycle_detector.cc
+index e3901ae..a9db95d 100644
+--- a/utils/cycle_detector.cc
++++ b/utils/cycle_detector.cc
+@@ -100,7 +100,7 @@ void GraphCycles::RemoveEdge(int32_t x, int32_t y) {
+ static bool forwardDfs(GraphCycles::Rep* r, int32_t n, int32_t upperBound);
+ static void backwardDfs(GraphCycles::Rep* r, int32_t n, int32_t lowerBound);
+ static void reorder(GraphCycles::Rep* r);
+-static void sort(const Vec<Node*>&, Vec<int32_t>* delta);
++static void sortByRank(const Vec<Node*>&, Vec<int32_t>* delta);
+ static void moveToList(GraphCycles::Rep* r, Vec<int32_t>* src,
+                        Vec<int32_t>* dst);
+ static void clearVisitedBits(GraphCycles::Rep* r, const Vec<int32_t>& nodes);
+@@ -199,8 +199,8 @@ static void backwardDfs(GraphCycles::Rep* r, int32_t n, int32_t lowerBound) {
+ // Recomputes rank assignments to make them compatible with the edges (producer
+ // has smaller rank than its consumer)
+ static void reorder(GraphCycles::Rep* r) {
+-  sort(r->nodes, &r->deltab);
+-  sort(r->nodes, &r->deltaf);
++  sortByRank(r->nodes, &r->deltab);
++  sortByRank(r->nodes, &r->deltaf);
+ 
+   // Adds contents of delta lists to list (backwards deltas first).
+   r->list.clear();
+@@ -219,16 +219,20 @@ static void reorder(GraphCycles::Rep* r) {
+ }
+ 
+ // Sorts nodes in the vector according to their ranks. Small rank first.
+-static void sort(const Vec<Node*>& nodes, Vec<int32_t>* delta) {
+-  struct ByRank {
+-    const Vec<Node*>* nodes;
+-    bool operator()(int32_t a, int32_t b) const {
+-      return (*nodes)[a]->rank < (*nodes)[b]->rank;
+-    }
+-  };
+-  ByRank cmp;
+-  cmp.nodes = &nodes;
+-  std::sort(delta->begin(), delta->end(), cmp);
++static void sortByRank(const Vec<Node*>& nodes, Vec<int32_t>* delta) {
++  // struct ByRank {
++  //   const Vec<Node*>* nodes;
++  //   bool operator()(int32_t a, int32_t b) const {
++  //     return (*nodes)[a]->rank < (*nodes)[b]->rank;
++  //   }
++  // };
++  // ByRank cmp;
++  // cmp.nodes = &nodes;
++  // std::sort(delta->begin(), delta->end(), cmp);
++  std::sort(delta->begin(), delta->end(),
++            [&nodes](int32_t a, int32_t b) {
++              return nodes[a]->rank < nodes[b]->rank;
++            });
+ }
+ 
+ // Collects ranks of nodes in vector `src` to vector `dst`
