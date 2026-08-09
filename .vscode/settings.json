@@ -143,6 +143,7 @@
     "__functional_base": "cpp"
   },
   "mlir.tablegen_compilation_databases": [
-    "./examples/triton_encodings/build/tablegen_compile_commands.yml"
+    "./examples/triton_encodings/build/tablegen_compile_commands.yml",
+    "./examples/lower_mhlo_broadcast/build/tablegen_compile_commands.yml"
   ]
 }

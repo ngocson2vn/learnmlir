@@ -31,6 +31,8 @@
 #include "mhlo/IR/register.h"
 #include "transforms/passes.h"
 
+// Custom passes
+#include "passes.h"
 
 template<typename T>
 void printType() {
@@ -60,8 +62,6 @@ int main(int argc, char** argv) {
   // Create MLIR context and load dialects
   //============================================================
   DialectRegistry registry;
-  registry.insert<func::FuncDialect>();
-  registry.insert<memref::MemRefDialect>();
   registerAllDialects(registry);
   mhlo::registerAllMhloDialects(registry);
 
@@ -127,9 +127,10 @@ int main(int argc, char** argv) {
     output->os(), flag
   );
 
+  // pm.addPass(mlir::createCustomComputeOpAndFuncBufferizePass());
+
   pm.addPass(mlir::createComputeOpAndFuncBufferizePass());
   pm.addPass(mlir::createCanonicalizerPass());
-
   pm.addPass(mlir::createFinalBufferizePass());
   pm.addPass(mlir::createCanonicalizerPass());
 

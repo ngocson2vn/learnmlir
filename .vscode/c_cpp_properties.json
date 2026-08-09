@@ -10,6 +10,7 @@
             "includePath": [
                 "/usr/local/cuda-12.4/include",
                 "${workspaceFolder}/examples/lower_mhlo_broadcast",
+                "${workspaceFolder}/examples/lower_mhlo_broadcast/build",
                 "${workspaceFolder}/examples/lower_mhlo_broadcast/llvm-build/include",
                 "${workspaceFolder}/examples/lower_mhlo_broadcast/llvm-build/tools/mlir/include",
                 "${workspaceFolder}/examples/lower_mhlo_broadcast/third_party/llvm-project/mlir/include",

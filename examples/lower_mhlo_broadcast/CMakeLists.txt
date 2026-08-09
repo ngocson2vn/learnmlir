@@ -34,6 +34,12 @@ add_subdirectory(third_party/mlir-hlo)
 include_directories(third_party/mlir-hlo)
 include_directories(${CMAKE_BINARY_DIR}/third_party/mlir-hlo)
 
+#============================================================================
+# Custom passes
+#============================================================================
+set(LLVM_TARGET_DEFINITIONS passes.td)
+mlir_tablegen(passes.h.inc -gen-pass-decls)
+add_public_tablegen_target(CustomPassesIncGen)
 
 #============================================================================
 # main
@@ -45,8 +51,13 @@ message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
 include_directories(${CMAKE_BINARY_DIR})
 add_executable(main 
   main.cpp
+  passes.cc
 )
 target_compile_options(main PRIVATE -g -O0)
+
+add_dependencies(main
+  CustomPassesIncGen
+)
 
 set(CLANG_LIB_DIR ${LLVM_BINARY_DIR}/lib/clang/22/lib/x86_64-unknown-linux-gnu)
 message(STATUS "CLANG_LIB_DIR: ${LLVM_BINARY_DIR}/lib/clang/22/lib/x86_64-unknown-linux-gnu")
