@@ -12,3 +12,4 @@ make
 ```bash
 make run
 ```
+Output: lowering.mlir
