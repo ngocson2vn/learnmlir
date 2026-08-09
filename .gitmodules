@@ -16,3 +16,9 @@
 [submodule "study_disc_passes/third_party/torch-mlir"]
 	path = study_disc_passes/third_party/torch-mlir
 	url = https://github.com/pai-disc/torch-mlir.git
+[submodule "examples/lower_mhlo_broadcast/third_party/mlir-hlo"]
+	path = examples/lower_mhlo_broadcast/third_party/mlir-hlo
+	url = https://github.com/tensorflow/mlir-hlo.git
+[submodule "examples/lower_mhlo_broadcast/third_party/llvm-project"]
+	path = examples/lower_mhlo_broadcast/third_party/llvm-project
+	url = https://github.com/llvm/llvm-project.git

@@ -133,14 +133,15 @@ To preserve the bounds and data of the subview, the `reinterpret_cast` needs to 
 Given the following IR:
 ```MLIR
 module {
-  func.func @predict_on_marine_ba4be75_72(%arg0: tensor<?x576xf32>, %arg1: tensor<?x30xi64>) -> (tensor<?x30xf32>) attributes {llvm.emit_c_interface, tf_entry} {
+  func.func @main(%arg0: tensor<?x576xf32>, %arg1: tensor<?x30xi64>) -> (tensor<?x30xf32>) attributes {llvm.emit_c_interface, tf_entry} {
+    %c0 = arith.constant 0 : index
     %dim = tensor.dim %arg0, %c0 : tensor<?x576xf32>
     %1 = shape.shape_of %arg1 : tensor<?x30xi64> -> tensor<2xindex>
     %extracted_slice_0 = tensor.extract_slice %arg0[0, 256] [%dim, 6] [1, 1] : tensor<?x576xf32> to tensor<?x6xf32>
     %extracted_slice_1 = tensor.extract_slice %extracted_slice_0[0, 0] [%dim, 1] [1, 1] : tensor<?x6xf32> to tensor<?x1xf32>
-    %27 = "mhlo.dynamic_broadcast_in_dim"(%extracted_slice_1, %1) {broadcast_dimensions = dense<[0, 1]> : tensor<2xi64>} : (tensor<?x1xf32>, tensor<2xindex>) -> tensor<?x30xf32>
+    %2 = "mhlo.dynamic_broadcast_in_dim"(%extracted_slice_1, %1) {broadcast_dimensions = dense<[0, 1]> : tensor<2xi64>} : (tensor<?x1xf32>, tensor<2xindex>) -> tensor<?x30xf32>
 
-    return %27 : tensor<?x30xf32>
+    return %2 : tensor<?x30xf32>
   }
 }
 ```
