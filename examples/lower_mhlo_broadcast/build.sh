@@ -7,8 +7,6 @@ echo "ROOT_DIR=${ROOT_DIR}"
 
 if [[ ! -f ./.git_submodule_updated ]]; then
   git submodule update --init --recursive
-  pushd third_party/mlir-hlo/
-  git apply ../patches/mlir_hlo.patch
   touch ./.git_submodule_updated
 fi
 
@@ -37,6 +35,13 @@ echo
 echo "==================================================="
 echo "2. Build main.cpp"
 echo "==================================================="
+if ! git status | grep -q 'third_party/mlir-hlo'; then
+  pushd third_party/mlir-hlo/
+  git apply ../patches/mlir_hlo.patch
+  echo "Patched third_party/mlir-hlo/"
+  popd
+fi
+
 mkdir -p ${ROOT_DIR}/build
 
 cmake -G Ninja -S . -B build \
