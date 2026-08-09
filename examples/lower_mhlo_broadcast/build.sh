@@ -3,15 +3,18 @@
 set -e
 
 ROOT_DIR=$(pwd)
-echo "ROOT_DIR=${ROOT_DIR}"
-
+echo "==================================================="
+echo "1. Update git submodules"
+echo "==================================================="
 if [[ ! -f ./.git_submodule_updated ]]; then
   git submodule update --init --recursive
   touch ./.git_submodule_updated
 fi
+echo "DONE"
 
+echo
 echo "==================================================="
-echo "1. Build third_party/llvm-project/llvm"
+echo "2. Build third_party/llvm-project/llvm"
 echo "==================================================="
 mkdir -p ${ROOT_DIR}/llvm-build
 cmake -G Ninja -S third_party/llvm-project/llvm -B llvm-build \
@@ -26,14 +29,14 @@ cmake -G Ninja -S third_party/llvm-project/llvm -B llvm-build \
   -DLLVM_CCACHE_BUILD=ON \
   -DCOMPILER_RT_BUILD_GWP_ASAN=OFF \
   -DLLVM_INCLUDE_TESTS=OFF \
-  -DCOMPILER_RT_BUILD_SANITIZERS=ON
+  -DCOMPILER_RT_BUILD_SANITIZERS=ON 1>/dev/null
 
 cmake --build llvm-build/
-
+echo "DONE"
 
 echo
 echo "==================================================="
-echo "2. Build main.cpp"
+echo "3. Build main.cpp"
 echo "==================================================="
 if ! git status | grep -q 'third_party/mlir-hlo'; then
   pushd third_party/mlir-hlo/
