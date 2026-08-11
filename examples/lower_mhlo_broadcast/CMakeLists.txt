@@ -25,6 +25,11 @@ list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 
+# !!! THIS IS IMPORTANT !!!
+# Include the following files to make TableGen/LLVM/MLIR functions available
+include(TableGen)
+include(AddLLVM)
+include(AddMLIR)
 
 #============================================================================
 # MHLO
