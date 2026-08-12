@@ -154,3 +154,24 @@ LogicalResult OperationLegalizer::legalizePatternCreatedOperations(
   return success();
 }
 ```
+
+# Failure Cases
+## Lowering an op X creates new ops
+If one of new ops is not legal, then MLIR reports that it failed to legalize the op X <= this is the most confusing part!
+
+For example,
+llvm-project/mlir/lib/Transforms/Utils/DialectConversion.cpp
+
+`legalizePatternCreatedOperations()` is legalizing `gpu.thread_id` op:
+<img src="./images/gpu_thread_id.png" />
+
+`gpu.thread_id` is a new op created when converting `ttng.async_tma_copy_global_to_local`.
+
+Going backward the call stack, you will see that MLIR is legalizing `ttng.async_tma_copy_global_to_local`:
+
+<img src="./images/ttng_async_tma_copy_global_to_local.png" />
+<br/><br/>
+
+If MLIR fails to legalize `gpu.thread_id` op, then it will report that it failed to legalize `ttng.async_tma_copy_global_to_local`:
+
+<img src="./images/confusing_legalization_error.png" />
